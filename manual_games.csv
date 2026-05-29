@@ -1,0 +1,10 @@
+date,tournament,season,team_a,score_a,team_b,score_b,neutral,tier
+1936-08-14,Olympics,1936,USA,19,CAN,8,True,1.0
+1964-10-23,Olympics,1964,USA,73,RUS,59,True,1.0
+1980-07-30,Olympics,1980,YUG,86,ITA,77,True,1.0
+1996-08-03,Olympics,1996,USA,95,SCG,69,True,1.0
+2012-08-12,Olympics,2012,USA,107,ESP,100,True,1.0
+2021-08-07,Olympics,2020,USA,87,FRA,82,True,1.0
+2010-09-12,FIBA World Cup,2010,USA,81,TUR,64,True,1.0
+2015-09-20,EuroBasket,2015,ESP,80,LTU,63,True,0.7
+2017-09-17,EuroBasket,2017,SLO,93,SRB,85,True,0.7

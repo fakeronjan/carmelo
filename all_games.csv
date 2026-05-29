@@ -16,6 +16,7 @@ date,tournament,season,team_a,score_a,team_b,score_b,neutral,tier
 1936-08-07,Olympics,1936,SUI,25,GER,18,True,1.0
 1936-08-07,Olympics,1936,TUR,16,CHI,30,True,1.0
 1936-08-13,Olympics,1936,USA,25,MEX,10,True,1.0
+1936-08-14,Olympics,1936,USA,19,CAN,8,True,1.0
 1948-08-01,Olympics,1948,BEL,40,CAN,45,True,1.0
 1948-08-01,Olympics,1948,CAN,81,IRI,25,True,1.0
 1948-08-01,Olympics,1948,CAN,49,PER,43,True,1.0
@@ -432,6 +433,7 @@ date,tournament,season,team_a,score_a,team_b,score_b,neutral,tier
 1964-08-01,Olympics,1964,YUG,74,FIN,45,True,1.0
 1964-08-01,Olympics,1964,YUG,99,KOR,66,True,1.0
 1964-08-01,Olympics,1964,YUG,84,URU,71,True,1.0
+1964-10-23,Olympics,1964,USA,73,RUS,59,True,1.0
 1967-05-27,FIBA World Cup,1967,ARG,69,JPN,63,True,1.0
 1967-05-27,FIBA World Cup,1967,BRA,85,PAR,41,True,1.0
 1967-05-27,FIBA World Cup,1967,MEX,73,YUG,86,True,1.0
@@ -548,8 +550,8 @@ date,tournament,season,team_a,score_a,team_b,score_b,neutral,tier
 1970-05-10,FIBA World Cup,1970,USA,74,CUB,53,True,1.0
 1970-05-11,FIBA World Cup,1970,BRA,94,ITA,93,True,1.0
 1970-05-11,FIBA World Cup,1970,CAN,88,KOR,97,True,1.0
-1970-05-11,FIBA World Cup,1970,RUS,71,URU,53,True,1.0
 1970-05-11,FIBA World Cup,1970,EGY,77,PAN,107,True,1.0
+1970-05-11,FIBA World Cup,1970,RUS,71,URU,53,True,1.0
 1970-05-12,FIBA World Cup,1970,CAN,69,ITA,84,True,1.0
 1970-05-12,FIBA World Cup,1970,CUB,80,TCH,82,True,1.0
 1970-05-12,FIBA World Cup,1970,PAN,52,RUS,110,True,1.0
@@ -572,15 +574,15 @@ date,tournament,season,team_a,score_a,team_b,score_b,neutral,tier
 1970-05-18,FIBA World Cup,1970,BRA,55,YUG,80,True,1.0
 1970-05-18,FIBA World Cup,1970,RUS,95,URU,43,True,1.0
 1970-05-18,FIBA World Cup,1970,TCH,77,ITA,89,True,1.0
+1970-05-19,FIBA World Cup,1970,EGY,64,CUB,103,True,1.0
 1970-05-19,FIBA World Cup,1970,KOR,79,CAN,77,True,1.0
 1970-05-19,FIBA World Cup,1970,PAN,90,AUS,83,True,1.0
-1970-05-19,FIBA World Cup,1970,EGY,64,CUB,103,True,1.0
 1970-05-20,FIBA World Cup,1970,AUS,61,CUB,90,True,1.0
+1970-05-20,FIBA World Cup,1970,EGY,73,KOR,93,True,1.0
 1970-05-20,FIBA World Cup,1970,ITA,76,URU,65,True,1.0
 1970-05-20,FIBA World Cup,1970,PAN,79,CAN,81,True,1.0
 1970-05-20,FIBA World Cup,1970,RUS,72,USA,75,True,1.0
 1970-05-20,FIBA World Cup,1970,TCH,84,YUG,94,True,1.0
-1970-05-20,FIBA World Cup,1970,EGY,73,KOR,93,True,1.0
 1970-05-21,FIBA World Cup,1970,ITA,66,USA,64,True,1.0
 1970-05-21,FIBA World Cup,1970,TCH,72,BRA,71,True,1.0
 1970-05-21,FIBA World Cup,1970,URU,45,YUG,63,True,1.0
@@ -833,6 +835,7 @@ date,tournament,season,team_a,score_a,team_b,score_b,neutral,tier
 1980-07-29,Olympics,1980,BRA,95,YUG,96,True,1.0
 1980-07-29,Olympics,1980,RUS,109,CUB,90,True,1.0
 1980-07-30,Olympics,1980,RUS,117,ESP,94,True,1.0
+1980-07-30,Olympics,1980,YUG,86,ITA,77,True,1.0
 1982-08-15,FIBA World Cup,1982,BRA,73,AUS,75,True,1.0
 1982-08-15,FIBA World Cup,1982,CAN,87,URU,78,True,1.0
 1982-08-15,FIBA World Cup,1982,ESP,88,PAN,85,True,1.0
@@ -1381,14 +1384,14 @@ date,tournament,season,team_a,score_a,team_b,score_b,neutral,tier
 1996-07-22,Olympics,1996,ARG,65,LTU,61,True,1.0
 1996-07-22,Olympics,1996,BRA,87,GRE,89,True,1.0
 1996-07-22,Olympics,1996,CRO,109,CHN,78,True,1.0
-1996-07-22,Olympics,1996,SCG,91,AUS,68,True,1.0
 1996-07-22,Olympics,1996,KOR,86,PUR,98,True,1.0
+1996-07-22,Olympics,1996,SCG,91,AUS,68,True,1.0
 1996-07-24,Olympics,1996,AUS,109,BRA,101,True,1.0
 1996-07-24,Olympics,1996,CHN,87,ARG,77,True,1.0
 1996-07-24,Olympics,1996,CRO,71,ANG,48,True,1.0
-1996-07-24,Olympics,1996,SCG,118,KOR,65,True,1.0
 1996-07-24,Olympics,1996,GRE,80,PUR,69,True,1.0
 1996-07-24,Olympics,1996,LTU,82,USA,104,True,1.0
+1996-07-24,Olympics,1996,SCG,118,KOR,65,True,1.0
 1996-07-26,Olympics,1996,ANG,49,LTU,85,True,1.0
 1996-07-26,Olympics,1996,ARG,75,CRO,90,True,1.0
 1996-07-26,Olympics,1996,BRA,82,SCG,101,True,1.0
@@ -1417,6 +1420,7 @@ date,tournament,season,team_a,score_a,team_b,score_b,neutral,tier
 1996-08-02,Olympics,1996,KOR,61,ANG,99,True,1.0
 1996-08-03,Olympics,1996,LTU,80,AUS,74,True,1.0
 1996-08-03,Olympics,1996,SCG,69,USA,95,True,1.0
+1996-08-03,Olympics,1996,USA,95,SCG,69,True,1.0
 1997-06-25,EuroBasket,1997,BIH,55,RUS,65,True,0.7
 1997-06-25,EuroBasket,1997,CRO,75,GER,55,True,0.7
 1997-06-25,EuroBasket,1997,GRE,74,TUR,52,True,0.7
@@ -2113,8 +2117,8 @@ date,tournament,season,team_a,score_a,team_b,score_b,neutral,tier
 2009-08-07,FIBA Asia Cup,2009,JPN,69,PHI,78,True,0.7
 2009-08-07,FIBA Asia Cup,2009,KAZ,56,CHN,74,True,0.7
 2009-08-07,FIBA Asia Cup,2009,KOR,122,SRI,54,True,0.7
-2009-08-07,FIBA Asia Cup,2009,LBN,108,UAE,38,True,0.7
 2009-08-07,FIBA AfroBasket,2009,LBA,81,NGR,97,True,0.7
+2009-08-07,FIBA Asia Cup,2009,LBN,108,UAE,38,True,0.7
 2009-08-07,FIBA Asia Cup,2009,QAT,95,IND,70,True,0.7
 2009-08-07,FIBA AfroBasket,2009,RWA,57,TUN,74,True,0.7
 2009-08-07,FIBA Asia Cup,2009,TPE,73,KUW,51,True,0.7
@@ -2255,8 +2259,8 @@ date,tournament,season,team_a,score_a,team_b,score_b,neutral,tier
 2009-09-08,EuroBasket,2009,GER,76,RUS,73,True,0.7
 2009-09-08,EuroBasket,2009,GRE,76,CRO,68,True,0.7
 2009-09-08,EuroBasket,2009,ISR,79,MKD,82,True,0.7
-2009-09-08,EuroBasket,2009,LTU,75,POL,86,True,0.7
 2009-09-08,EuroBasket,2009,LAT,51,FRA,60,True,0.7
+2009-09-08,EuroBasket,2009,LTU,75,POL,86,True,0.7
 2009-09-08,EuroBasket,2009,SLO,80,SRB,69,True,0.7
 2009-09-09,EuroBasket,2009,ESP,90,SLO,84,True,0.7
 2009-09-09,EuroBasket,2009,GBR,59,SRB,77,True,0.7
@@ -2375,6 +2379,7 @@ date,tournament,season,team_a,score_a,team_b,score_b,neutral,tier
 2010-09-11,FIBA World Cup,2010,USA,89,LTU,74,True,1.0
 2010-09-12,FIBA World Cup,2010,ESP,81,ARG,86,True,1.0
 2010-09-12,FIBA World Cup,2010,SRB,88,LTU,99,True,1.0
+2010-09-12,FIBA World Cup,2010,USA,81,TUR,64,True,1.0
 2011-08-17,FIBA AfroBasket,2011,CIV,105,RSA,53,True,0.7
 2011-08-17,FIBA AfroBasket,2011,CMR,96,EGY,81,True,0.7
 2011-08-17,FIBA AfroBasket,2011,MAD,67,MOZ,77,True,0.7
@@ -2652,6 +2657,7 @@ date,tournament,season,team_a,score_a,team_b,score_b,neutral,tier
 2012-08-10,Olympics,2012,ARG,83,USA,109,True,1.0
 2012-08-10,Olympics,2012,ESP,67,RUS,59,True,1.0
 2012-08-12,Olympics,2012,ARG,77,RUS,81,True,1.0
+2012-08-12,Olympics,2012,USA,107,ESP,100,True,1.0
 2013-08-01,FIBA Asia Cup,2013,CHN,59,KOR,63,True,0.7
 2013-08-01,FIBA Asia Cup,2013,IND,80,BHR,82,True,0.7
 2013-08-01,FIBA Asia Cup,2013,IRI,115,MAS,25,True,0.7
@@ -2912,8 +2918,8 @@ date,tournament,season,team_a,score_a,team_b,score_b,neutral,tier
 2015-08-22,FIBA AfroBasket,2015,CIV,64,ZIM,52,True,0.7
 2015-08-22,FIBA AfroBasket,2015,CPV,78,ALG,69,True,0.7
 2015-08-22,FIBA AfroBasket,2015,MOZ,76,SEN,86,True,0.7
-2015-08-23,FIBA AfroBasket,2015,CMR,93,GAB,67,True,0.7
 2015-08-23,FIBA AfroBasket,2015,CAF,60,UGA,56,True,0.7
+2015-08-23,FIBA AfroBasket,2015,CMR,93,GAB,67,True,0.7
 2015-08-23,FIBA AfroBasket,2015,MLI,49,EGY,55,True,0.7
 2015-08-23,FIBA AfroBasket,2015,NGR,59,TUN,70,True,0.7
 2015-08-24,FIBA AfroBasket,2015,ALG,74,CIV,81,True,0.7
@@ -3061,6 +3067,7 @@ date,tournament,season,team_a,score_a,team_b,score_b,neutral,tier
 2015-09-17,EuroBasket,2015,GRE,97,LAT,90,True,0.7
 2015-09-18,EuroBasket,2015,LAT,70,CZE,97,True,0.7
 2015-09-18,EuroBasket,2015,SRB,64,LTU,67,True,0.7
+2015-09-20,EuroBasket,2015,ESP,80,LTU,63,True,0.7
 2015-09-20,EuroBasket,2015,FRA,81,SRB,68,True,0.7
 2015-09-23,FIBA Asia Cup,2015,IRN,86,JPN,48,True,0.7
 2015-09-23,FIBA Asia Cup,2015,KOR,87,JOR,60,True,0.7
@@ -3361,6 +3368,7 @@ date,tournament,season,team_a,score_a,team_b,score_b,neutral,tier
 2017-09-16,FIBA AfroBasket,2017,NGR,65,TUN,77,True,0.7
 2017-09-16,FIBA AfroBasket,2017,SEN,73,MAR,62,True,0.7
 2017-09-17,EuroBasket,2017,ESP,93,RUS,85,True,0.7
+2017-09-17,EuroBasket,2017,SLO,93,SRB,85,True,0.7
 2017-11-23,WC Qualifiers,2019,ARG,96,PAR,63,False,0.5
 2017-11-23,WC Qualifiers,2019,CHN,96,HKG,44,False,0.5
 2017-11-23,WC Qualifiers,2019,LBN,107,IND,72,False,0.5
@@ -3920,6 +3928,7 @@ date,tournament,season,team_a,score_a,team_b,score_b,neutral,tier
 2021-08-05,Olympics,2020,FRA,90,SLO,89,True,1.0
 2021-08-05,Olympics,2020,USA,97,AUS,78,True,1.0
 2021-08-07,Olympics,2020,SLO,93,AUS,107,True,1.0
+2021-08-07,Olympics,2020,USA,87,FRA,82,True,1.0
 2021-08-24,FIBA AfroBasket,2021,ANG,71,CPV,77,True,0.7
 2021-08-24,FIBA AfroBasket,2021,CAF,56,EGY,72,True,0.7
 2021-08-24,FIBA AfroBasket,2021,RWA,82,COD,68,True,0.7

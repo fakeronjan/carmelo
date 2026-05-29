@@ -175,6 +175,28 @@ def union_with_existing(fresh_df, path="all_games.csv"):
     return combined
 
 
+MANUAL_GAMES_CSV = "manual_games.csv"
+
+
+def manual_games_frame():
+    """Load curator-supplied medal games that the Wikipedia scraper misses.
+
+    Some Olympic / World Cup / EuroBasket gold- and bronze-medal games live on
+    Template-namespace per-game pages the scraper never visits, so they never
+    land in the scrape. They are recorded by hand in manual_games.csv (canonical
+    codes, same schema as all_games.csv) and unioned in here. The union is keyed
+    on (date, team_a, team_b); the scraper never emits these rows, so re-running
+    build_games.py keeps them intact (append-only, never deleted)."""
+    if not os.path.exists(MANUAL_GAMES_CSV):
+        return None
+    mdf = pd.read_csv(MANUAL_GAMES_CSV)
+    if not len(mdf):
+        return None
+    print(f"\n>>> manual medal-game additions [{MANUAL_GAMES_CSV}]")
+    print(f"    -> {len(mdf)} games")
+    return mdf
+
+
 def build(events, out_path="all_games.csv"):
     frames = []
     for title, family, season in events:
@@ -195,6 +217,10 @@ def build(events, out_path="all_games.csv"):
         if os.path.exists(out_path):
             print("Existing DB left intact.")
         return pd.DataFrame()
+
+    manual = manual_games_frame()
+    if manual is not None:
+        frames.append(manual)
 
     fresh = pd.concat(frames, ignore_index=True, sort=False)
     # Within this run, a game can appear under two events (shouldn't, but guard).
