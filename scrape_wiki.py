@@ -28,7 +28,7 @@ import requests
 import pandas as pd
 from datetime import datetime
 
-from countries import NAME_TO_CODE  # name->code resolution for name-based cells
+from countries import NAME_TO_CODE, resolve_nation  # name->code + year-aware nation lineage
 
 WIKI_RAW = "https://en.wikipedia.org/w/index.php?title={title}&action=raw"
 HEADERS = {"User-Agent": "carmelo-ratings/1.0 (international basketball ratings; contact via github.com/fakeronjan)"}
@@ -149,12 +149,27 @@ _MONTHS = {m.lower(): i for i, m in enumerate(
 _MONTHS.update({m[:3].lower(): i for m, i in list(_MONTHS.items())})
 
 
-def _parse_date(date_raw):
+def _parse_date(date_raw, season=None):
     """Parse a {{basketballbox}} date field. Handles '10 September 2023',
     'September 10, 2023', ISO '2014-09-14', and the {{dts}} date-sorting
     template '{{dts|...|2014|9|14}}' / '{{dts|2014|September|14}}' (positional
-    year|month|day after any named args). Returns a date or None."""
+    year|month|day after any named args). Returns a date or None.
+
+    season: the edition year (as int or str). OLD tournament pages (pre-2000s)
+    write the date WITHOUT a year, e.g. '|date=5 July', because the year is
+    implicit (the edition's). When the date string carries no 4-digit year, the
+    season year is attached so these games are no longer silently dropped.
+    Verified: '5 July' + season 1986 -> 1986-07-05."""
     from datetime import date as _date
+
+    # season year as int, if usable.
+    season_year = None
+    if season is not None:
+        try:
+            season_year = int(str(season).strip()[:4])
+        except (ValueError, TypeError):
+            season_year = None
+
     # Date-template handling: {{dts|...|Y|M|D}}, {{Start date|Y|M|D|df=yes}},
     # {{End date|...}} — extract the positional Y|M|D (skipping named args like
     # df=yes/format=/link=). No closing-brace required since _field can truncate
@@ -192,20 +207,51 @@ def _parse_date(date_raw):
             return datetime.strptime(m.group(1), "%d %B %Y").date()
         except ValueError:
             pass
+
+    # YEAR-LESS old-page dates: attach the season's year. Try both day-first
+    # ('5 July') and month-first ('July 5') with the edition year appended.
+    if season_year is not None and not re.search(r"\d{4}", s):
+        for fmt in ("%d %B %Y", "%B %d %Y", "%d %b %Y", "%b %d %Y"):
+            try:
+                return datetime.strptime(f"{s} {season_year}", fmt).date()
+            except ValueError:
+                continue
+        # Relaxed leading "<day> <Month>" or "<Month> <day>" prefix.
+        m = re.match(r"(\d{1,2}\s+[A-Za-z]+)", s)
+        if m:
+            for fmt in ("%d %B %Y", "%d %b %Y"):
+                try:
+                    return datetime.strptime(f"{m.group(1)} {season_year}", fmt).date()
+                except ValueError:
+                    continue
+        m = re.match(r"([A-Za-z]+\s+\d{1,2})", s)
+        if m:
+            for fmt in ("%B %d %Y", "%b %d %Y"):
+                try:
+                    return datetime.strptime(f"{m.group(1)} {season_year}", fmt).date()
+                except ValueError:
+                    continue
     return None
 
 
 def parse_basketballboxes(wikitext, tournament, season):
     """Yield dict rows: date, team_a (code), score_a, team_b (code), score_b."""
     rows = []
+    # Year used for defunct-nation resolution. Prefer the parsed game date's
+    # year (handles editions spanning a year boundary); fall back to the
+    # edition season. resolve_nation is keyed on the GAME year, NOT any flag
+    # year-suffix the cell may carry ({{bk|YUG|1998}}).
     for block in _balanced_blocks(wikitext):
-        date = _parse_date(_field(block, "date"))
+        date = _parse_date(_field(block, "date"), season)
         ta = _team_code(_field(block, "teamA"))
         tb = _team_code(_field(block, "teamB"))
         sa = _score(_field(block, "scoreA"))
         sb = _score(_field(block, "scoreB"))
         if not (ta and tb and sa is not None and sb is not None and date is not None):
             continue
+        game_year = date.year if date is not None else season
+        ta, _ = resolve_nation(ta, game_year)
+        tb, _ = resolve_nation(tb, game_year)
         if ta == tb:
             continue
         rows.append({

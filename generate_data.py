@@ -102,14 +102,18 @@ CODE_TO_ISO2 = {
     "BOT": "BW", "GBS": "GW", "TOG": "TG",
 }
 
-# Defunct entities — no flag emoji (intentional).
+# Defunct entities have no real-world flag emoji (Soviet Union / SFR & FR
+# Yugoslavia / Serbia & Montenegro / West & East Germany / Czechoslovakia).
+# Show a neutral white-flag marker rather than crashing or picking a wrong
+# modern flag. Modern flags are unaffected.
 _DEFUNCT = {"URS", "YUG", "SCG", "FRG", "GDR", "TCH"}
+_DEFUNCT_FLAG = "\U0001F3F3️"  # 🏳️ neutral marker for defunct nations
 
 
 def flag(code):
     code = canon_code(code)
     if code in _DEFUNCT:
-        return ""
+        return _DEFUNCT_FLAG
     iso = CODE_TO_ISO2.get(code)
     if not iso or len(iso) != 2:
         return ""

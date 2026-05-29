@@ -139,5 +139,92 @@ def canon_code(code):
     return CODE_ALIASES.get(code, code)
 
 
+# ============================================================
+# YEAR-AWARE NATION RESOLUTION (defunct-state lineage)
+# ============================================================
+# Applied at SCRAPE time so all_games.csv stores CANONICAL codes (the rating
+# engine rates strictly by code). A given 3-letter code can mean different
+# nations in different eras (FRG -> Germany, YUG -> Yugoslavia vs Serbia &
+# Montenegro), so resolution MUST be keyed on the GAME year, not the flag-year
+# suffix Wikipedia sometimes carries ({{bk|YUG|1998}} -> resolve by game year).
+#
+# RULES (user-reviewed; keep EXACT — do not improvise):
+#   URS  any year                 -> RUS  "Russia"                  [MERGE]
+#   FRG/GER pre-1990, GDR any     -> GER  "Germany"                 [MERGE]
+#   YUG  year < 1992              -> YUG  "Yugoslavia"              [SEPARATE]
+#   YUG  1992-2002, SCG any,
+#        SRB/MNE-pair 2003-2006   -> SCG  "Serbia and Montenegro"   [SEPARATE]
+#   SRB  year >= 2006             -> SRB  "Serbia"                  (modern)
+#   TCH  any year                 -> TCH  "Czechoslovakia"          [SEPARATE]
+#   CRO/SLO/BIH/MKD/MNE ...       -> their own codes (Yugoslav breakaways)
+#   All modern codes unchanged.
+#
+# Returns (canonical_code, country_name).
+
+def resolve_nation(code, year):
+    """Resolve a raw 3-letter code + GAME year to (canonical_code, name).
+
+    `year` may be int or str; non-numeric years fall back to modern handling.
+    """
+    code = (code or "").upper()
+    code = CODE_ALIASES.get(code, code)  # collapse SVN/LIT/etc first
+    try:
+        y = int(str(year)[:4])
+    except (ValueError, TypeError):
+        y = None
+
+    # USSR -> Russia (continuation merge), any year.
+    if code == "URS":
+        return "RUS", "Russia"
+
+    # 1992 Unified Team (former Soviet republics competing under the IOC/EUN
+    # flag, code "IOC"/"EUN") is the direct USSR continuation in 1992 — folded
+    # into Russia to keep the Soviet -> Russia lineage unbroken. (FLAGGED: a
+    # documented extension of the user's URS->RUS merge rule, since the spec did
+    # not enumerate the Unified Team explicitly.)
+    if code in ("EUN", "IOC") and y is not None and y == 1992:
+        return "RUS", "Russia"
+
+    # Germany merge: West Germany (FRG, or GER pre-unification) + East
+    # Germany (GDR) all fold into modern Germany.
+    if code == "FRG":
+        return "GER", "Germany"
+    if code == "GDR":
+        return "GER", "Germany"
+    # GER pre-1990 is West Germany competing as "Germany" -> merge to GER.
+    # GER 1990+ is unified Germany (already GER). Either way the code is GER.
+    if code == "GER":
+        return "GER", "Germany"
+
+    # Yugoslav lineage — three SEPARATE entities by era.
+    if code == "YUG":
+        if y is not None and y < 1992:
+            return "YUG", "Yugoslavia"            # SFR Yugoslavia
+        # 1992-2002 (and any undated YUG row from that middle era) = the
+        # FR Yugoslavia / Serbia & Montenegro entity.
+        return "SCG", "Serbia and Montenegro"
+    if code == "SCG":
+        return "SCG", "Serbia and Montenegro"
+    if code == "SRB":
+        # 2003-2006 Serbia competed as part of Serbia & Montenegro; the
+        # federation dissolved mid-2006. Modern Serbia is 2006+.
+        if y is not None and 2003 <= y < 2006:
+            return "SCG", "Serbia and Montenegro"
+        return "SRB", "Serbia"
+    if code == "MNE":
+        # Montenegro as an INDEPENDENT nation is 2006+. A 2003-2006 MNE cell
+        # would only appear as part of the joint S&M team; fold those in.
+        if y is not None and 2003 <= y < 2006:
+            return "SCG", "Serbia and Montenegro"
+        return "MNE", CODE_TO_NAME.get("MNE", "Montenegro")
+
+    # Czechoslovakia stays its own separate entity, any year.
+    if code == "TCH":
+        return "TCH", "Czechoslovakia"
+
+    # Everything else (incl. Yugoslav breakaways CRO/SLO/BIH/MKD): unchanged.
+    return code, CODE_TO_NAME.get(code, code)
+
+
 def name_for(code):
     return CODE_TO_NAME.get(canon_code(code), code)

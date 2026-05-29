@@ -47,12 +47,17 @@ def _oly(year):
     return (f"Basketball at the {year} Summer Olympics – Men's tournament", "Olympics", str(year))
 
 
-# Olympics: title scheme stable back to 2004 (en-dash). 1992-2000 use a
-# slightly different layout but the same page-title scheme; included in --all.
+# Olympics: title scheme stable back to 2004 (en-dash). 1936-2000 use the same
+# page-title scheme (en-dash "– Men's tournament"). Box-score density thins out
+# for the oldest editions (1936-1968 may be sparse/absent); the union just adds
+# whatever parses. The 1992 page is where the Dream Team's 46 boxes live.
 OLYMPICS_MODERN = [_oly(y) for y in (2024, 2020, 2016, 2012, 2008)]
-OLYMPICS_HIST   = [_oly(y) for y in (2004, 2000, 1996, 1992)]
+OLYMPICS_HIST   = [_oly(y) for y in (
+    2004, 2000, 1996, 1992, 1988, 1984, 1980, 1976, 1972, 1968,
+    1964, 1960, 1956, 1952, 1948, 1936)]
 
-# FIBA World Cup (2014+) / FIBA World Championship (<=2010).
+# FIBA World Cup (2014+) / FIBA World Championship (<=2010). Wikipedia carries
+# game-level box scores for every World Championship back to 1950.
 WORLDCUP_MODERN = [
     ("2023 FIBA Basketball World Cup", "FIBA World Cup", "2023"),
     ("2019 FIBA Basketball World Cup", "FIBA World Cup", "2019"),
@@ -61,16 +66,21 @@ WORLDCUP_MODERN = [
     ("2006 FIBA World Championship",   "FIBA World Cup", "2006"),
 ]
 WORLDCUP_HIST = [
-    ("2002 FIBA World Championship", "FIBA World Cup", "2002"),
-    ("1998 FIBA World Championship", "FIBA World Cup", "1998"),
-    ("1994 FIBA World Championship", "FIBA World Cup", "1994"),
-    ("1990 FIBA World Championship", "FIBA World Cup", "1990"),
-    ("1986 FIBA World Championship", "FIBA World Cup", "1986"),
+    (f"{y} FIBA World Championship", "FIBA World Cup", str(y)) for y in (
+        2010, 2002, 1998, 1994, 1990, 1986, 1982, 1978, 1974, 1970,
+        1967, 1963, 1959, 1954, 1950)
 ]
 
 # Continental championships (modern editions, ~last 20 years).
 EUROBASKET_MODERN = [
     (f"EuroBasket {y}", "EuroBasket", str(y)) for y in (2025, 2022, 2017, 2015, 2013, 2011, 2009, 2007, 2005)
+]
+# EuroBasket backfill (historical odd-year editions). 1991 is a Wikipedia stub
+# (returns 0 harmlessly); the rest carry {{basketballbox}} games. The union
+# dedupes any overlap with the modern list.
+EUROBASKET_HIST = [
+    (f"EuroBasket {y}", "EuroBasket", str(y)) for y in (
+        2009, 2007, 2005, 2003, 2001, 1999, 1997, 1995, 1993, 1991, 1989)
 ]
 AMERICUP_MODERN = [
     ("2025 FIBA AmeriCup", "FIBA AmeriCup", "2025"),
@@ -123,7 +133,7 @@ def modern_events():
 
 
 def historical_events():
-    return OLYMPICS_HIST + WORLDCUP_HIST
+    return OLYMPICS_HIST + WORLDCUP_HIST + EUROBASKET_HIST
 
 
 def union_with_existing(fresh_df, path="all_games.csv"):
