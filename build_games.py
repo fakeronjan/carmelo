@@ -15,15 +15,18 @@ from scrape_wiki import scrape_event
 
 # ------------------------------------------------------------
 # TIER WEIGHTS (WLS observation-weight uplift). Borrowed from MESSI's
-# tier_weight concept. Documented values — flag for tuning.
-#   Olympics + FIBA World Cup        = top tier   1.0
+# tier_weight concept. Only ratios matter in the WLS solve.
+#   Olympics                         = pinnacle   2.0  (basketball's true crown;
+#                                                       nations bring full squads,
+#                                                       unlike the World Cup)
+#   FIBA World Cup                   = top tier   1.0
 #   Continental championships        = mid tier   0.7
 #   World Cup qualifiers             = lower tier  0.5
 # These multiply the recency weight in the WLS solve; they encode "this game
 # is a more reliable signal of senior-team strength", not margin magnitude.
 # ------------------------------------------------------------
 TIER_WEIGHTS = {
-    "Olympics":         1.0,
+    "Olympics":         2.0,
     "FIBA World Cup":   1.0,
     "EuroBasket":       0.7,
     "FIBA AmeriCup":    0.7,
