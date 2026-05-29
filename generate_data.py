@@ -201,54 +201,17 @@ def record_str(code):
 
 
 # ============================================================
-# MEDALS (per edition gold/silver/bronze) — mirrors the prior podium walk
+# MEDALS (per edition gold/silver/bronze) — CURATED authoritative source
 # ============================================================
-def edition_medals(grp):
-    """Return (gold, silver, bronze codes) for one tournament edition."""
-    grp = grp.sort_values("date")
-    last_date = grp["date"].max()
-    final_games = grp[grp["date"] == last_date]
-    if final_games.empty:
-        return None, None, None
-    final_row = final_games.iloc[-1]
-
-    def won_prev(team):
-        prev = grp[(grp["date"] < last_date) &
-                   ((grp["team_a"] == team) | (grp["team_b"] == team))].sort_values("date")
-        if prev.empty:
-            return None
-        last = prev.iloc[-1]
-        if last["team_a"] == team:
-            return last["score_a"] > last["score_b"]
-        return last["score_b"] > last["score_a"]
-
-    # Gold game = the final; when the final + bronze share a date, the final is
-    # the one between two prior-round winners.
-    for cand in reversed(list(final_games.itertuples(index=False))):
-        ah = won_prev(cand.team_a)
-        bh = won_prev(cand.team_b)
-        if ah and bh:
-            final_row = dict(zip(final_games.columns, cand))
-            break
-
-    a, b = final_row["team_a"], final_row["team_b"]
-    if final_row["score_a"] > final_row["score_b"]:
-        gold, silver = a, b
-    else:
-        gold, silver = b, a
-    finalists = {a, b}
-
-    bronze = None
-    pre = grp[grp["date"] < last_date]
-    if not pre.empty:
-        bdate = pre["date"].max()
-        bgames = pre[(pre["date"] == bdate) &
-                     (~pre["team_a"].isin(finalists)) &
-                     (~pre["team_b"].isin(finalists))]
-        if not bgames.empty:
-            bg = bgames.iloc[-1]
-            bronze = bg["team_a"] if bg["score_a"] > bg["score_b"] else bg["team_b"]
-    return gold, silver, bronze
+# Podiums are read from curated_podiums.csv (the authoritative medalist table,
+# sourced from Wikipedia per-tournament results summaries with era-aware nation
+# codes), NOT bracket-walked from all_games.csv. Bracket-walking misattributed
+# golds for editions whose gold-medal game lives on a Template-namespace page the
+# scraper never fetched (e.g. Tokyo 2020), and dropped bronze for editions whose
+# 3rd-place game shared the final date with the final. The curated table fixes
+# both. Each medalist's rating/rank/conf_rank (final-snapshot) and edition W-L
+# are still computed from carmelo_ratings.csv / all_games.csv below.
+CURATED_PODIUMS_CSV = "curated_podiums.csv"
 
 
 # ── Per-team W-L within a single tournament edition (no draws in basketball) ──
@@ -271,15 +234,34 @@ def edition_team_wl(grp, code):
 
 # edition_results[(tournament, season)] = {1:gold,2:silver,3:bronze}, all codes
 # edition_groups[(tournament, season)] = the full edition game DataFrame (for W-L)
+# Medalists come from the curated table; game groups (for edition W-L) come from
+# all_games.csv keyed by the same (tournament, season).
 edition_results = {}
 edition_groups = {}
 mgames = games[games["tournament"].isin(MEDAL_TOURNAMENTS)].copy()
-for (tour, season), grp in mgames.groupby(["tournament", "season"]):
-    gold, silver, bronze = edition_medals(grp)
-    if gold is None:
+edition_groups = {
+    (tour, int(season)): grp
+    for (tour, season), grp in mgames.groupby(["tournament", "season"])
+}
+
+_curated = pd.read_csv(CURATED_PODIUMS_CSV)
+for _, _row in _curated.iterrows():
+    tour = _row["tournament"]
+    if tour not in MEDAL_TOURNAMENTS:
         continue
-    edition_results[(tour, int(season))] = {1: gold, 2: silver, 3: bronze}
-    edition_groups[(tour, int(season))] = grp
+    season = int(_row["year"])
+
+    def _code(val):
+        if pd.isna(val) or str(val).strip() == "":
+            return None
+        return canon_code(str(val).strip())
+
+    edition_results[(tour, season)] = {
+        1: _code(_row.get("gold")),
+        2: _code(_row.get("silver")),
+        3: _code(_row.get("bronze")),
+    }
+print(f"  loaded {len(edition_results)} curated edition podiums from {CURATED_PODIUMS_CSV}")
 
 # Per-(code, year) tournament finishes for honor badges.
 country_year_finishes = {}  # (code, year) -> [{tournament, finish}]
@@ -635,7 +617,7 @@ for tour in MEDAL_TOURNAMENTS:
     entries_oldest_first = []
     for year in years:
         res = edition_results[(tour, year)]
-        grp = edition_groups[(tour, year)]
+        grp = edition_groups.get((tour, year), games.iloc[0:0])
         gold, silver, bronze = res.get(1), res.get(2), res.get(3)
 
         def team_block(code, count_key, counter, _tour=tour, _year=year, _grp=grp):
