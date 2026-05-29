@@ -184,16 +184,23 @@ def parse_basketballboxes(wikitext, tournament, season):
     return rows
 
 
-def discover_pages(main_title, wikitext):
+def discover_pages(main_title, wikitext, template_prefix=None):
     """Enumerate every page that may hold {{basketballbox}} games for an event:
       - [[<main_title> <suffix>]] wikilink sub-pages
       - {{:<Page>}} transclusions (group/knockout sub-pages)
       - {{<Template page>}} per-game / medal / match template transclusions
         whose name starts with the event title (fetched from Template: ns)
     Returns a list of (title, is_template) tuples to fetch.
+
+    template_prefix: when set, per-game templates are matched against this
+        prefix instead of main_title. Needed when recursing into a sub-page
+        (e.g. '... final round') whose per-game templates are named after the
+        ROOT event ('2014 FIBA Basketball World Cup Gold Medal'), not the
+        sub-page.
     """
     pages = []  # (title, is_template)
     seen = set()
+    tmpl_prefix = template_prefix or main_title
 
     def add(title, is_template):
         key = (title, is_template)
@@ -212,10 +219,10 @@ def discover_pages(main_title, wikitext):
         add(m.group(1).strip(), False)
 
     # 3. {{Template ...}} per-game/medal/match templates that start with the
-    #    event title. These transclude a single basketballbox each.
+    #    event title (or template_prefix). Each transcludes a basketballbox.
     for m in re.finditer(r"\{\{\s*([^}|:#][^}|#]*?)\s*(?:\||\}\})", wikitext):
         name = m.group(1).strip()
-        if name.startswith(main_title) and name != main_title:
+        if name.startswith(tmpl_prefix) and name != tmpl_prefix and name != main_title:
             add(name, True)
 
     return pages
@@ -277,7 +284,7 @@ def scrape_event(main_title, tournament, season, neutral=True,
         for (title, is_template), wt in list(subpage_wts.items()):
             if is_template or not wt:
                 continue
-            for sub_title, sub_is_tmpl in discover_pages(title, wt):
+            for sub_title, sub_is_tmpl in discover_pages(title, wt, template_prefix=main_title):
                 if not _should_follow(sub_title, follow_qualifiers):
                     continue
                 ft = f"Template:{sub_title}" if sub_is_tmpl else sub_title
