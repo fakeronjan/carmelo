@@ -47,14 +47,23 @@ def _oly(year):
     return (f"Basketball at the {year} Summer Olympics – Men's tournament", "Olympics", str(year))
 
 
+def _oly_old(year):
+    # Pre-1988 Olympic basketball had only a men's event, so Wikipedia hosts the
+    # games on the bare "Basketball at the YYYY Summer Olympics" page (no
+    # "– Men's tournament" suffix; that title is a redirect for old editions).
+    return (f"Basketball at the {year} Summer Olympics", "Olympics", str(year))
+
+
 # Olympics: title scheme stable back to 2004 (en-dash). 1936-2000 use the same
 # page-title scheme (en-dash "– Men's tournament"). Box-score density thins out
 # for the oldest editions (1936-1968 may be sparse/absent); the union just adds
 # whatever parses. The 1992 page is where the Dream Team's 46 boxes live.
 OLYMPICS_MODERN = [_oly(y) for y in (2024, 2020, 2016, 2012, 2008)]
-OLYMPICS_HIST   = [_oly(y) for y in (
-    2004, 2000, 1996, 1992, 1988, 1984, 1980, 1976, 1972, 1968,
-    1964, 1960, 1956, 1952, 1948, 1936)]
+# 1988+ use the "– Men's tournament" page; 1984 and earlier use the bare
+# "Basketball at the YYYY Summer Olympics" page (men-only era).
+OLYMPICS_HIST   = ([_oly(y) for y in (2004, 2000, 1996, 1992, 1988)] +
+                   [_oly_old(y) for y in (
+                       1984, 1980, 1976, 1972, 1968, 1964, 1960, 1956, 1952, 1948, 1936)])
 
 # FIBA World Cup (2014+) / FIBA World Championship (<=2010). Wikipedia carries
 # game-level box scores for every World Championship back to 1950.
@@ -105,12 +114,12 @@ ASIACUP_MODERN = [
 AFROBASKET_MODERN = [
     ("FIBA AfroBasket 2025", "FIBA AfroBasket", "2025"),
     ("FIBA AfroBasket 2021", "FIBA AfroBasket", "2021"),
-    ("AfroBasket 2017", "FIBA AfroBasket", "2017"),
+    ("FIBA AfroBasket 2017", "FIBA AfroBasket", "2017"),  # "AfroBasket 2017" redirects
     ("AfroBasket 2015", "FIBA AfroBasket", "2015"),
     ("AfroBasket 2013", "FIBA AfroBasket", "2013"),
     ("AfroBasket 2011", "FIBA AfroBasket", "2011"),
     ("AfroBasket 2009", "FIBA AfroBasket", "2009"),
-    ("2007 FIBA Africa Championship", "FIBA AfroBasket", "2007"),
+    ("AfroBasket 2007", "FIBA AfroBasket", "2007"),  # "2007 FIBA Africa Championship" redirects
 ]
 
 # World Cup qualifiers (home-and-away, non-neutral). 2023 + 2019 cycles, four

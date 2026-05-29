@@ -80,6 +80,24 @@ NAME_TO_CODE.update({
     "Turkiye": "TUR",
     "U.S. Virgin Islands": "ISV",
     "United States Virgin Islands": "ISV",
+    # 1992 Unified Team (post-USSR former Soviet republics) competed under the
+    # Olympic flag; its Wikipedia box cells wikilink to the Soviet Union men's
+    # team with display text "Unified Team". Map both to URS so resolve_nation
+    # folds the 1992 edition into Russia (the USSR continuation).
+    "Unified Team": "URS",
+    "Soviet Union": "URS",
+    "Soviet Union men's national basketball team": "URS",
+    # Yugoslav-lineage names that appear in old {{bk|NAME}} cells. All map to
+    # the YUG code; resolve_nation then splits by GAME year into Yugoslavia /
+    # Serbia and Montenegro (e.g. "FR Yugoslavia" in 2002 -> SCG).
+    "Yugoslavia": "YUG",
+    "SFR Yugoslavia": "YUG",
+    "FR Yugoslavia": "YUG",
+    "SR Yugoslavia": "YUG",
+    "Serbia and Montenegro": "SCG",
+    "West Germany": "FRG",
+    "East Germany": "GDR",
+    "Czechoslovakia": "TCH",
 })
 
 # FIBA zone (confederation) per code. FIBA merged Asia + Oceania in 2017; we
@@ -121,6 +139,7 @@ CODE_ALIASES = {
     "ESA": "ESA",   # El Salvador (keep; add name below)
     "GUY": "GUY",   # Guyana (keep; add name below)
     "TOG": "TOG",   # Togo (keep; add name below)
+    "ROC": "CHN",   # Republic of China (1936/1948 Olympics) -> China lineage
 }
 
 # Names for codes that only appear via the alias set / minor nations.
@@ -184,6 +203,9 @@ def resolve_nation(code, year):
     # not enumerate the Unified Team explicitly.)
     if code in ("EUN", "IOC") and y is not None and y == 1992:
         return "RUS", "Russia"
+    # IOC in any OTHER year is an unidentifiable Olympic-flag placeholder (e.g.
+    # malformed 1980 Moscow boxes); leave it as IOC so the scraper drops the
+    # game rather than mis-attributing it to a wrong nation.
 
     # Germany merge: West Germany (FRG, or GER pre-unification) + East
     # Germany (GDR) all fold into modern Germany.

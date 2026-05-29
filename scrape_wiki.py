@@ -57,14 +57,22 @@ def fetch_wikitext(title, max_retries=3):
 
 def _balanced_blocks(text, opener="{{basketballbox"):
     """Yield each {{basketballbox ... }} block with balanced braces.
-    Case-insensitive on the opener ({{Basketballbox is also used)."""
-    low = text.lower()
-    op = opener.lower()
+    Case-insensitive on the opener ({{Basketballbox is also used).
+
+    Opener positions are located with a case-insensitive regex on the ORIGINAL
+    text (NOT text.lower()): str.lower() can CHANGE string length for some
+    Unicode code points (e.g. Turkish 'İ' -> 'i̇' is two code points), which
+    would shift every offset and make the brace scanner index the wrong region
+    — silently truncating blocks on pages that contain such characters. Old
+    EuroBasket/World-Championship pages (Turkish player names) tripped this.
+    """
+    op_re = re.compile(re.escape(opener), re.IGNORECASE)
     i = 0
     while True:
-        start = low.find(op, i)
-        if start == -1:
+        m = op_re.search(text, i)
+        if not m:
             return
+        start = m.start()
         depth = 0
         j = start
         while j < len(text):
@@ -89,7 +97,13 @@ def _balanced_blocks(text, opener="{{basketballbox"):
 # that (argument longer than 4 chars or not all-caps) and map via NAME_TO_CODE.
 #   3. wikilink "[[... men's ... basketball team|Country]]" -> Country -> code.
 _BK_RE = re.compile(r"\{\{\s*bk(?:-rt|-rb)?\s*\|\s*([^}|\]\n]+?)\s*(?:\||\}\}|$)", re.IGNORECASE)
-_FLAG_RE = re.compile(r"\{\{\s*flag\s*(?:deco|decoration|icon|u|country)?\s*\|\s*([^}|\]\n]+?)\s*(?:\||\}\}|$)", re.IGNORECASE)
+# Flag templates: {{flagdeco|X}} {{flagicon|X}} {{flagu|X}} {{flag country|X}}
+# and the Olympic-roster variant {{flagIOC|X|YEAR Summer Olympics}} /
+# {{flagIOC-rt|X|...}} used on 1936-1948 Olympic basketball pages. The right/
+# bottom suffixes (-rt/-rb) are tolerated. X is the country CODE or NAME.
+_FLAG_RE = re.compile(
+    r"\{\{\s*flag\s*(?:deco|decoration|icon|u|country|ioc)?(?:-rt|-rb)?\s*\|\s*([^}|\]\n]+?)\s*(?:\||\}\}|$)",
+    re.IGNORECASE)
 _WIKILINK_RE = re.compile(r"\[\[[^\]|]*\|\s*([^\]|]+?)\s*\]\]")
 
 
@@ -112,24 +126,47 @@ def _arg_to_code(arg):
     return None
 
 
+# "IOC" is the International Olympic Committee placeholder flag, used for teams
+# competing under the Olympic flag rather than a national one (e.g. several
+# nations at the 1980 Moscow boycott, the 1992 Unified Team). It is NOT a
+# nation. The real identity comes from the cell's [[... national basketball
+# team|Display]] wikilink (1992 -> "Unified Team" -> URS -> Russia; 1980 ->
+# "Italy"). When NO wikilink disambiguates the cell (some 1980 boxes carry only
+# a bare {{flagicon|IOC}} with the team buried in player stats), the team is
+# unidentifiable, so the game is DROPPED rather than mis-attributed to a wrong
+# nation — never publish "IOC" as if it were a country.
+_PLACEHOLDER_CODES = {"IOC"}
+
+
 def _team_code(raw):
     """Extract a 3-letter team code from a teamA/teamB cell. Tries bk template,
-    then flag template, then a wikilinked country name."""
+    then flag template, then a wikilinked country name.
+
+    A bk/flag code that is a non-national placeholder (IOC) is held back; the
+    wikilinked country name is preferred. If only the placeholder resolves, it
+    is returned (so resolve_nation can map the 1992 Unified Team -> Russia);
+    years where IOC is NOT a single identifiable nation are dropped downstream
+    in parse_basketballboxes."""
+    placeholder = None
     m = _BK_RE.search(raw)
     if m:
         code = _arg_to_code(m.group(1))
-        if code:
+        if code and code not in _PLACEHOLDER_CODES:
             return code
+        if code in _PLACEHOLDER_CODES:
+            placeholder = code
     m = _FLAG_RE.search(raw)
     if m:
         code = _arg_to_code(m.group(1))
-        if code:
+        if code and code not in _PLACEHOLDER_CODES:
             return code
+        if code in _PLACEHOLDER_CODES:
+            placeholder = code
     for m in _WIKILINK_RE.finditer(raw):
         code = NAME_TO_CODE.get(m.group(1).strip())
         if code:
             return code
-    return None
+    return placeholder
 
 
 def _field(block, key):
@@ -187,7 +224,11 @@ def _parse_date(date_raw, season=None):
                     return _date(yr, mo, day)
             except (ValueError, TypeError):
                 pass
-    s = re.sub(r"\{\{[^}]*\}\}|\[\[|\]\]", "", date_raw).strip()
+    # Strip single-bracket external links ([http...] report links) BEFORE other
+    # cleanup: their URLs embed digit runs (archive timestamps like 20120803...)
+    # that otherwise look like a 4-digit year and defeat the year-less fallback.
+    s = re.sub(r"\[https?://[^\]]*\]", "", date_raw)
+    s = re.sub(r"\{\{[^}]*\}\}|\[\[|\]\]", "", s).strip()
     # ISO YYYY-MM-DD
     m = re.match(r"(\d{4})-(\d{2})-(\d{2})", s)
     if m:
@@ -241,17 +282,39 @@ def parse_basketballboxes(wikitext, tournament, season):
     # year (handles editions spanning a year boundary); fall back to the
     # edition season. resolve_nation is keyed on the GAME year, NOT any flag
     # year-suffix the cell may carry ({{bk|YUG|1998}}).
+    # Deterministic season-fallback date for boxes that carry teams + scores but
+    # an EMPTY/unparseable date field (some old Olympic pages, e.g. 1964, write
+    # |date= with no value). Without this the entire edition is dropped. We stamp
+    # the games with a fixed day in the edition year so they still count toward
+    # ratings and land in the correct season. NOTE: this collapses an edition's
+    # games onto fewer game-days, which is acceptable for the WLS window but can
+    # blur medal-final detection for that specific edition (flagged in report).
+    from datetime import date as _date
+    season_fallback = None
+    try:
+        _sy = int(str(season).strip()[:4])
+        season_fallback = _date(_sy, 8, 1)  # Aug 1: typical Olympic/summer-event window
+    except (ValueError, TypeError):
+        season_fallback = None
+
     for block in _balanced_blocks(wikitext):
         date = _parse_date(_field(block, "date"), season)
         ta = _team_code(_field(block, "teamA"))
         tb = _team_code(_field(block, "teamB"))
         sa = _score(_field(block, "scoreA"))
         sb = _score(_field(block, "scoreB"))
+        if date is None and season_fallback is not None:
+            date = season_fallback
         if not (ta and tb and sa is not None and sb is not None and date is not None):
             continue
         game_year = date.year if date is not None else season
         ta, _ = resolve_nation(ta, game_year)
         tb, _ = resolve_nation(tb, game_year)
+        # Drop games whose team is still an unresolved Olympic-flag placeholder
+        # (IOC outside 1992): the nation is unidentifiable and must not be
+        # published as a fake country.
+        if ta in ("IOC", "EUN") or tb in ("IOC", "EUN"):
+            continue
         if ta == tb:
             continue
         rows.append({
