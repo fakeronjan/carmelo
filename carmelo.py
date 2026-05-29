@@ -7,7 +7,7 @@
 # margin-cap transform, same zero-sum constraint via a high-weight extra row.
 #
 # International adaptations (vs DUNCAN):
-#   * NO continuous season -> a FIXED game-day window (see WINDOW_GAME_DAYS).
+#   * NO continuous season -> a FIXED CALENDAR-TIME window (see WINDOW_YEARS).
 #   * HCA = 0 for neutral-site games (Olympics, World Cup, all continental
 #     championships), HCA = 2.0 only for home-and-away WC qualifiers. The
 #     `neutral` flag is set per game by the scraper.
@@ -32,14 +32,17 @@ from countries import CODE_TO_NAME, CONFEDERATION, canon_code
 # PARAMETERS  (documented; flagged for tuning in the build report)
 # ============================================================
 
-# Fixed rolling window in GAME-DAYS (distinct dates on which any game was
-# played). International basketball has no continuous season — events cluster
-# in summers (Olympics/WC/continental) with WC qualifier windows scattered
-# across Nov/Feb. A game-day window of 150 spans roughly the last ~3-4 major
-# event cycles' worth of game-days. START VALUE — NEEDS USER TUNING. Too small
-# and a team's rating swings on a single tournament; too large and stale
-# rosters from 6+ years ago still weight the current rating.
-WINDOW_GAME_DAYS = 150
+# Fixed CALENDAR-TIME window. Game-days are the wrong unit for sparse intl
+# data: 150 game-days spanned ~6yr in the modern qualifier era and 11+yr
+# historically, so "current form" wasn't era-consistent. A fixed calendar
+# window keeps it consistent across all eras. 4yr ≈ one Olympic cycle + an
+# offset World Cup + a EuroBasket — enough opponents per snapshot, recent
+# enough to mean "current form". START VALUE — tune vs GOAT face-validity.
+WINDOW_YEARS = 4
+WINDOW_DAYS = int(WINDOW_YEARS * 365.25)
+# Oldest in-window game keeps at least this weight (sparse-era floor, so a
+# snapshot doesn't lean entirely on the most recent days within the window).
+RECENCY_FLOOR = 0.15
 
 # Margin transform: cap at +/- MARGIN_CAP points (DUNCAN's basketball value).
 # Keeps 40-point blowouts from dominating the regression; below the cap the
@@ -176,22 +179,27 @@ def compute_ratings(df):
     frames = []
     last_year = None
 
+    # Ordinal day per row for fast calendar-window math (date is a date object).
+    df = df.copy()
+    df["_ord"] = df["date"].map(lambda d: d.toordinal())
+
     for i in range(1, max_id + 1):
         current_date = df.loc[df["grouped_date_id"] == i, "date"].max()
         if pd.isnull(current_date):
             continue
 
-        window = df[
-            (df["grouped_date_id"] >= i - WINDOW_GAME_DAYS + 1) &
-            (df["grouped_date_id"] <= i)
-        ].copy()
+        # Calendar-time window: games within the last WINDOW_DAYS calendar days
+        # (not a count of game-days), so the window means the same thing in
+        # every era regardless of how sparse the schedule was.
+        cur_ord = current_date.toordinal()
+        window = df[(df["_ord"] <= cur_ord) & (df["_ord"] > cur_ord - WINDOW_DAYS)].copy()
         if len(window) < 10:
             continue
 
-        # Linear recency decay across the window (DUNCAN-style), multiplied by
-        # the per-game tournament tier weight (MESSI-style).
-        window["game_days_ago"] = i - window["grouped_date_id"]
-        window["date_weight"] = 1 - (window["game_days_ago"] / WINDOW_GAME_DAYS)
+        # Linear recency decay over CALENDAR time (DUNCAN-style), floored so old
+        # in-window games still contribute, multiplied by tournament tier (MESSI).
+        window["days_ago"] = cur_ord - window["_ord"]
+        window["date_weight"] = (1 - window["days_ago"] / WINDOW_DAYS).clip(lower=RECENCY_FLOOR)
         window["weight"] = window["date_weight"] * window["tier"]
         window = window[window["weight"] > 0]
         if len(window) < 10:
@@ -266,8 +274,8 @@ def attach_last_game(ratings, games):
 # ============================================================
 
 if __name__ == "__main__":
-    print(f"CARMELO rating engine — window={WINDOW_GAME_DAYS} game-days, "
-          f"cap={MARGIN_CAP}, HCA={HOME_COURT_ADJUSTMENT} (non-neutral only)")
+    print(f"CARMELO rating engine — window={WINDOW_YEARS}yr calendar ({WINDOW_DAYS}d), "
+          f"floor={RECENCY_FLOOR}, cap={MARGIN_CAP}, HCA={HOME_COURT_ADJUSTMENT} (non-neutral only)")
     games = load_games()
     print(f"Loaded {len(games):,} games over "
           f"{games['date'].min()} .. {games['date'].max()} "
