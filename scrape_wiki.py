@@ -143,18 +143,49 @@ def _score(raw):
     return int(m.group(0)) if m else None
 
 
+_MONTHS = {m.lower(): i for i, m in enumerate(
+    ["", "January", "February", "March", "April", "May", "June", "July",
+     "August", "September", "October", "November", "December"]) if m}
+_MONTHS.update({m[:3].lower(): i for m, i in list(_MONTHS.items())})
+
+
 def _parse_date(date_raw):
     """Parse a {{basketballbox}} date field. Handles '10 September 2023',
-    'September 10, 2023', and bracketed/linked variants."""
-    s = re.sub(r"\[\[|\]\]", "", date_raw).strip()
-    # A date field can contain a piped wikilink "[[10 September]] 2023" already
-    # stripped above, or trailing junk; take leading date tokens.
+    'September 10, 2023', ISO '2014-09-14', and the {{dts}} date-sorting
+    template '{{dts|...|2014|9|14}}' / '{{dts|2014|September|14}}' (positional
+    year|month|day after any named args). Returns a date or None."""
+    from datetime import date as _date
+    # Date-template handling: {{dts|...|Y|M|D}}, {{Start date|Y|M|D|df=yes}},
+    # {{End date|...}} — extract the positional Y|M|D (skipping named args like
+    # df=yes/format=/link=). No closing-brace required since _field can truncate
+    # the value at the template's inner }}.
+    mdts = re.search(r"\{\{\s*(?:dts|start[\s_]?date|end[\s_]?date)\b([^}]*)",
+                     date_raw, re.IGNORECASE)
+    if mdts:
+        toks = [t.strip() for t in mdts.group(1).split("|") if t.strip() and "=" not in t]
+        if len(toks) >= 3:
+            try:
+                yr = int(toks[0])
+                mo = int(toks[1]) if toks[1].isdigit() else _MONTHS.get(toks[1].lower())
+                day = int(toks[2])
+                if mo:
+                    return _date(yr, mo, day)
+            except (ValueError, TypeError):
+                pass
+    s = re.sub(r"\{\{[^}]*\}\}|\[\[|\]\]", "", date_raw).strip()
+    # ISO YYYY-MM-DD
+    m = re.match(r"(\d{4})-(\d{2})-(\d{2})", s)
+    if m:
+        try:
+            return _date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+        except ValueError:
+            pass
     for fmt in ("%d %B %Y", "%B %d, %Y", "%d %b %Y", "%b %d, %Y"):
         try:
             return datetime.strptime(s, fmt).date()
         except ValueError:
             continue
-    # Try a relaxed leading-date match: "<day> <Month> <Year>"
+    # Relaxed leading-date match: "<day> <Month> <Year>"
     m = re.match(r"(\d{1,2}\s+[A-Za-z]+\s+\d{4})", s)
     if m:
         try:

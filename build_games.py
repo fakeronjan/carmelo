@@ -139,11 +139,17 @@ def union_with_existing(fresh_df, path="all_games.csv"):
     key = ["date", "team_a", "team_b"]
     fresh = fresh_df.copy(); fresh["_src_priority"] = 0   # fresh wins on conflict
     prev = prev_df.copy();   prev["_src_priority"] = 1
+    # Normalize date to an ISO string in BOTH frames before dedup: fresh carries
+    # datetime.date objects, prev carries strings from CSV, and the mixed types
+    # silently defeat drop_duplicates — which would duplicate every game on a
+    # re-run. (Bit CARMELO 2026-05-29.)
+    for _d in (fresh, prev):
+        _d["date"] = pd.to_datetime(_d["date"], errors="coerce").dt.strftime("%Y-%m-%d")
     combined = pd.concat([fresh, prev], ignore_index=True, sort=False)
     combined = combined.sort_values("_src_priority").drop_duplicates(subset=key, keep="first")
     combined = combined.drop(columns=["_src_priority"]).reset_index(drop=True)
-    fresh_keys = set(map(tuple, fresh_df[key].astype(str).values))
-    preserved = sum(1 for k in map(tuple, prev_df[key].astype(str).values) if k not in fresh_keys)
+    fresh_keys = set(map(tuple, fresh[key].astype(str).values))
+    preserved = sum(1 for k in map(tuple, prev[key].astype(str).values) if k not in fresh_keys)
     if preserved:
         print(f"[db-union] preserved {preserved:,} games already in the database "
               f"that this run's scrape did not return (flaky source — not deleting history)")
