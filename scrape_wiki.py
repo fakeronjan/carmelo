@@ -1,0 +1,309 @@
+# ============================================================
+# CARMELO - International basketball scraper
+# Parses {{basketballbox}} game templates from Wikipedia tournament pages.
+#
+# Page structure varies by event. A single event's games can live in any of:
+#   1. {{basketballbox}} blocks directly on the main event page
+#      (e.g. FIBA Asia Cup, AfroBasket).
+#   2. {{:Sub Page}} transclusions of group/knockout sub-pages
+#      (e.g. FIBA World Cup groups, EuroBasket groups + knockout stage).
+#   3. {{Template:... game N}} / {{... Gold Medal}} per-game template
+#      transclusions in the Template: namespace (e.g. WC knockout rounds,
+#      EuroBasket "knockout stage matches").
+#   4. [[Sub Page]] wikilinks (older / continental sub-pages).
+# This scraper follows ALL of these recursively (one level deep is enough in
+# practice; a transcluded sub-page rarely transcludes a further sub-page).
+#
+# Team identity in a {{basketballbox}} cell appears as one of:
+#   {{bk|USA}}  {{bk-rt|USA}}  {{bk-rb|USA}}      -> 3-letter FIBA/IOC code
+#   {{flagdeco|USA}} {{flagicon|USA}}             -> 3-letter code
+#   {{bk-rt|Germany}}  {{flag decoration|Serbia}} -> full country NAME
+#   [[2024 Serbia men's Olympic basketball team|Serbia]] -> NAME via wikilink
+# We normalise everything to a 3-letter code (NAME -> code via NAME_TO_CODE).
+# ============================================================
+import re
+import sys
+import time
+import requests
+import pandas as pd
+from datetime import datetime
+
+from countries import NAME_TO_CODE  # name->code resolution for name-based cells
+
+WIKI_RAW = "https://en.wikipedia.org/w/index.php?title={title}&action=raw"
+HEADERS = {"User-Agent": "carmelo-ratings/1.0 (international basketball ratings; contact via github.com/fakeronjan)"}
+
+
+def fetch_wikitext(title, max_retries=3):
+    """Fetch raw wikitext for a Wikipedia page title. Returns '' on failure
+    (NEVER raises) so a flaky fetch degrades to 'no new games' rather than
+    crashing the run — the append-only union downstream protects history."""
+    url = WIKI_RAW.format(title=requests.utils.quote(title.replace(" ", "_")))
+    for attempt in range(max_retries):
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=30)
+            if r.status_code == 404:
+                return ""
+            r.raise_for_status()
+            time.sleep(0.25)
+            return r.text
+        except Exception as e:
+            if attempt == max_retries - 1:
+                print(f"  [warn] fetch failed for {title!r}: {e}")
+                return ""
+            time.sleep(2 ** attempt)
+    return ""
+
+
+def _balanced_blocks(text, opener="{{basketballbox"):
+    """Yield each {{basketballbox ... }} block with balanced braces.
+    Case-insensitive on the opener ({{Basketballbox is also used)."""
+    low = text.lower()
+    op = opener.lower()
+    i = 0
+    while True:
+        start = low.find(op, i)
+        if start == -1:
+            return
+        depth = 0
+        j = start
+        while j < len(text):
+            if text[j:j+2] == "{{":
+                depth += 1; j += 2
+            elif text[j:j+2] == "}}":
+                depth -= 1; j += 2
+                if depth == 0:
+                    yield text[start:j]
+                    break
+            else:
+                j += 1
+        else:
+            return
+        i = j
+
+
+# Team-identity extraction, in priority order.
+#   1. {{bk|CODE}} / {{bk-rt|CODE}} / {{bk-rb|CODE}} where CODE is 2-4 letters.
+#   2. {{flagdeco|CODE}} / {{flagicon|CODE}} / {{flagu|CODE}} with 2-4 letters.
+# Both #1 and #2 also accept a full country NAME as the argument; we detect
+# that (argument longer than 4 chars or not all-caps) and map via NAME_TO_CODE.
+#   3. wikilink "[[... men's ... basketball team|Country]]" -> Country -> code.
+_BK_RE = re.compile(r"\{\{\s*bk(?:-rt|-rb)?\s*\|\s*([^}|\]\n]+?)\s*(?:\||\}\}|$)", re.IGNORECASE)
+_FLAG_RE = re.compile(r"\{\{\s*flag\s*(?:deco|decoration|icon|u|country)?\s*\|\s*([^}|\]\n]+?)\s*(?:\||\}\}|$)", re.IGNORECASE)
+_WIKILINK_RE = re.compile(r"\[\[[^\]|]*\|\s*([^\]|]+?)\s*\]\]")
+
+
+def _arg_to_code(arg):
+    """Resolve a {{bk|...}} / {{flagdeco|...}} argument to a 3-letter code.
+    Accepts either a code (USA) or a country name (United States / Germany)."""
+    arg = arg.strip().strip("'").strip()
+    if not arg:
+        return None
+    # Pure 2-4 letter token that is all uppercase -> treat as code.
+    if re.fullmatch(r"[A-Za-z]{2,4}", arg) and arg.upper() == arg:
+        return arg.upper()
+    # Otherwise treat as a country name.
+    code = NAME_TO_CODE.get(arg)
+    if code:
+        return code
+    # Some args are codes given in mixed case (rare) — accept if 2-4 letters.
+    if re.fullmatch(r"[A-Za-z]{2,4}", arg):
+        return arg.upper()
+    return None
+
+
+def _team_code(raw):
+    """Extract a 3-letter team code from a teamA/teamB cell. Tries bk template,
+    then flag template, then a wikilinked country name."""
+    m = _BK_RE.search(raw)
+    if m:
+        code = _arg_to_code(m.group(1))
+        if code:
+            return code
+    m = _FLAG_RE.search(raw)
+    if m:
+        code = _arg_to_code(m.group(1))
+        if code:
+            return code
+    for m in _WIKILINK_RE.finditer(raw):
+        code = NAME_TO_CODE.get(m.group(1).strip())
+        if code:
+            return code
+    return None
+
+
+def _field(block, key):
+    """Extract |key=value from a template block (value up to next |field or end)."""
+    m = re.search(rf"\|\s*{key}\s*=\s*(.*?)(?=\n\s*\||\}}\}})", block, re.DOTALL | re.IGNORECASE)
+    return m.group(1).strip() if m else ""
+
+
+def _score(raw):
+    m = re.search(r"\d+", raw.replace("'''", ""))
+    return int(m.group(0)) if m else None
+
+
+def _parse_date(date_raw):
+    """Parse a {{basketballbox}} date field. Handles '10 September 2023',
+    'September 10, 2023', and bracketed/linked variants."""
+    s = re.sub(r"\[\[|\]\]", "", date_raw).strip()
+    # A date field can contain a piped wikilink "[[10 September]] 2023" already
+    # stripped above, or trailing junk; take leading date tokens.
+    for fmt in ("%d %B %Y", "%B %d, %Y", "%d %b %Y", "%b %d, %Y"):
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    # Try a relaxed leading-date match: "<day> <Month> <Year>"
+    m = re.match(r"(\d{1,2}\s+[A-Za-z]+\s+\d{4})", s)
+    if m:
+        try:
+            return datetime.strptime(m.group(1), "%d %B %Y").date()
+        except ValueError:
+            pass
+    return None
+
+
+def parse_basketballboxes(wikitext, tournament, season):
+    """Yield dict rows: date, team_a (code), score_a, team_b (code), score_b."""
+    rows = []
+    for block in _balanced_blocks(wikitext):
+        date = _parse_date(_field(block, "date"))
+        ta = _team_code(_field(block, "teamA"))
+        tb = _team_code(_field(block, "teamB"))
+        sa = _score(_field(block, "scoreA"))
+        sb = _score(_field(block, "scoreB"))
+        if not (ta and tb and sa is not None and sb is not None and date is not None):
+            continue
+        if ta == tb:
+            continue
+        rows.append({
+            "date": date, "tournament": tournament, "season": season,
+            "team_a": ta, "score_a": sa, "team_b": tb, "score_b": sb,
+        })
+    return rows
+
+
+def discover_pages(main_title, wikitext):
+    """Enumerate every page that may hold {{basketballbox}} games for an event:
+      - [[<main_title> <suffix>]] wikilink sub-pages
+      - {{:<Page>}} transclusions (group/knockout sub-pages)
+      - {{<Template page>}} per-game / medal / match template transclusions
+        whose name starts with the event title (fetched from Template: ns)
+    Returns a list of (title, is_template) tuples to fetch.
+    """
+    pages = []  # (title, is_template)
+    seen = set()
+
+    def add(title, is_template):
+        key = (title, is_template)
+        if title and key not in seen:
+            seen.add(key)
+            pages.append((title, is_template))
+
+    base = re.escape(main_title)
+
+    # 1. [[main_title <suffix>]] wikilinks (group/round/final sub-pages).
+    for m in re.finditer(rf"\[\[({base}[^\]|#]*)", wikitext):
+        add(m.group(1).strip(), False)
+
+    # 2. {{:Page}} transclusions of full sub-pages.
+    for m in re.finditer(r"\{\{:\s*([^}|#]+)", wikitext):
+        add(m.group(1).strip(), False)
+
+    # 3. {{Template ...}} per-game/medal/match templates that start with the
+    #    event title. These transclude a single basketballbox each.
+    for m in re.finditer(r"\{\{\s*([^}|:#][^}|#]*?)\s*(?:\||\}\})", wikitext):
+        name = m.group(1).strip()
+        if name.startswith(main_title) and name != main_title:
+            add(name, True)
+
+    return pages
+
+
+# Sub-pages whose titles contain any of these substrings are NOT followed when
+# scraping a finals event — they are separate events (qualifiers) that the
+# driver scrapes on their own with their own tournament tag / tier / neutral
+# flag. Without this, a World Cup finals page would pull in ~300 qualifier
+# games and mis-tag them as neutral top-tier finals games.
+_SKIP_SUBPAGE_SUBSTR = ("qualif", "Qualif", "pre-qualif", "Pre-Qualif")
+
+
+def _should_follow(title, follow_qualifiers):
+    if follow_qualifiers:
+        return True
+    return not any(s.lower() in title.lower() for s in ("qualif",))
+
+
+def scrape_event(main_title, tournament, season, neutral=True,
+                 follow_qualifiers=False, _depth=0):
+    """Scrape an event: main page + discovered sub-pages and per-game
+    templates. Recurses ONE extra level into discovered sub-pages so that a
+    'knockout stage' page that itself references per-game templates is fully
+    captured.
+
+    neutral: tournament-wide venue flag stamped on every game row (True for
+        finals events at a single neutral host; False for home-and-away
+        qualifiers). The driver sets this per event.
+    follow_qualifiers: when False (default for finals events) sub-pages whose
+        title mentions 'qualification' are skipped — they are scraped as their
+        own events. Set True when scraping a qualification event directly.
+    """
+    main_wt = fetch_wikitext(main_title)
+    if not main_wt:
+        if _depth == 0:
+            print(f"  [warn] no wikitext for event {main_title!r}")
+        return pd.DataFrame()
+
+    all_rows = []
+    all_rows.extend(parse_basketballboxes(main_wt, tournament, season))
+
+    pages = [(t, tmpl) for (t, tmpl) in discover_pages(main_title, main_wt)
+             if _should_follow(t, follow_qualifiers)]
+    subpage_wts = {}
+    for title, is_template in pages:
+        fetch_title = f"Template:{title}" if is_template else title
+        wt = fetch_wikitext(fetch_title)
+        subpage_wts[(title, is_template)] = wt
+        rows = parse_basketballboxes(wt, tournament, season)
+        if rows:
+            print(f"    {fetch_title}: {len(rows)} games")
+        all_rows.extend(rows)
+
+    # One level of recursion: a discovered (non-template) sub-page may itself
+    # reference per-game templates or further transclusions (e.g. EuroBasket
+    # 'knockout stage' -> 'knockout stage matches' template).
+    if _depth == 0:
+        for (title, is_template), wt in list(subpage_wts.items()):
+            if is_template or not wt:
+                continue
+            for sub_title, sub_is_tmpl in discover_pages(title, wt):
+                if not _should_follow(sub_title, follow_qualifiers):
+                    continue
+                ft = f"Template:{sub_title}" if sub_is_tmpl else sub_title
+                if (sub_title, sub_is_tmpl) in subpage_wts:
+                    continue
+                sub_wt = fetch_wikitext(ft)
+                subpage_wts[(sub_title, sub_is_tmpl)] = sub_wt
+                rows = parse_basketballboxes(sub_wt, tournament, season)
+                if rows:
+                    print(f"    {ft}: {len(rows)} games (L2)")
+                all_rows.extend(rows)
+
+    df = pd.DataFrame(all_rows)
+    if len(df):
+        df = df.drop_duplicates(subset=["date", "team_a", "team_b", "score_a", "score_b"])
+        df["neutral"] = neutral
+    return df
+
+
+if __name__ == "__main__":
+    # Proof: FIBA World Cup 2023 + Olympics 2024
+    for title, tour, season in [
+        ("2023 FIBA Basketball World Cup", "FIBA World Cup", "2023"),
+        ("Basketball at the 2024 Summer Olympics – Men's tournament", "Olympics", "2024"),
+    ]:
+        df = scrape_event(title, tour, season)
+        print(f"\n=== {title}: {len(df)} games extracted ===")
+        if len(df):
+            print(f"distinct teams: {sorted(set(df['team_a']) | set(df['team_b']))}\n")
