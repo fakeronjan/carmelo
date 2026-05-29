@@ -140,6 +140,18 @@ CODE_ALIASES = {
     "GUY": "GUY",   # Guyana (keep; add name below)
     "TOG": "TOG",   # Togo (keep; add name below)
     "ROC": "CHN",   # Republic of China (1936/1948 Olympics) -> China lineage
+    # Alternate 3-letter spellings seen on old / continental pages.
+    "CAR": "CAF",   # Central African Republic (1988 Olympics)
+    "CTA": "CAF",   # Central African Republic (FIBA code variant)
+    "FRY": "YUG",   # FR Yugoslavia -> YUG code; resolve_nation splits by year
+    "SER": "SRB",   # Serbia (alt code)
+    "LBY": "LBA",   # Libya
+    "LVA": "LAT",   # Latvia
+    "PHL": "PHI",   # Philippines
+    "PRI": "PUR",   # Puerto Rico
+    "TAI": "TPE",   # Taiwan / Chinese Taipei (1959 WC)
+    "UAR": "EGY",   # United Arab Republic (1958-71) -> Egypt (1970 WC)
+    "LBR": "LBR",   # Liberia (keep; add name below)
 }
 
 # Names for codes that only appear via the alias set / minor nations.
@@ -147,9 +159,10 @@ CODE_TO_NAME.update({
     "ESA": "El Salvador",
     "GUY": "Guyana",
     "TOG": "Togo",
+    "LBR": "Liberia",
 })
 CONFEDERATION.update({
-    "ESA": "Americas", "GUY": "Americas", "TOG": "Africa",
+    "ESA": "Americas", "GUY": "Americas", "TOG": "Africa", "LBR": "Africa",
 })
 
 
