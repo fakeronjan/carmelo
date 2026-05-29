@@ -168,9 +168,15 @@ games = games.dropna(subset=["score_a", "score_b"])
 # Every CARMELO ratings snapshot date is a game-day (one ranking_id per date).
 df["is_game_day"] = 1
 
-# ── W-L record per country over full history (no draws in basketball) ─────────
+# ── W-L record over the rating WINDOW (no draws in basketball) ────────────────
+# Counted over the last WINDOW_YEARS so the standings record matches the
+# window-based rating shown beside it (not a jarring all-time tally).
+# WINDOW_YEARS must match carmelo.py's window.
+WINDOW_YEARS = 4
+_gdates = pd.to_datetime(games["date"])
+_win_cutoff = _gdates.max() - pd.DateOffset(years=WINDOW_YEARS)
 records = {}  # code -> {"w","l"}
-for _, g in games.iterrows():
+for _, g in games[_gdates >= _win_cutoff].iterrows():
     a_won = g["score_a"] > g["score_b"]
     for code, won in ((g["team_a"], a_won), (g["team_b"], not a_won)):
         r = records.setdefault(code, {"w": 0, "l": 0})
