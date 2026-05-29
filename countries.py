@@ -134,6 +134,7 @@ CODE_ALIASES = {
     "SPA": "ESP",   # Spain
     "NGA": "NGR",   # Nigeria
     "LIB": "LBN",   # Lebanon
+    "IRN": "IRI",   # Iran (scraper used IRN for 2014-15; IRI is canonical)
     "BFA": "BKF",   # Burkina Faso
     "DRC": "COD",   # DR Congo
     "ESA": "ESA",   # El Salvador (keep; add name below)
