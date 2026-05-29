@@ -459,7 +459,7 @@
   <p class="data-note">Top 50 single-snapshot ratings, taken at the end of each Olympics / FIBA World Cup. Eligibility requires a top-3 finish.</p>
   <div class="goat-explainer">
     <h4>Why isn't the 1992 Dream Team #1?</h4>
-    <p>We considered it, and chose to keep the model honest rather than force the result. Two reasons it lands lower: (1) it is genuinely hard to quantify how dominant the Dream Team was against the far weaker field it faced, and (2) these are 4-year rolling ratings with recency weighting, so every score absorbs nearby tournaments, many of them without a single Dream Teamer. USA's 1994 and 1996 ratings still embed the 1992 squad's impact. That cross-year blending is a tradeoff inherent to any rolling rating system.</p>
+    <p>We ran the model many different ways and questioned this ourselves. Ultimately, the model we ended up deploying uses multiple years of data to smooth out fluctuations, which mathematically dampens the impact of adding NBA players to the 1992 US squad. The Dream Team also dominated competition that was outmatched at the time but has stepped up substantially in the decades since. In fact, USA's 1994 and 1996 ratings embed and arguably reflect the 1992 Dream Team's impact more clearly than 1992 itself. This cross-year blending is a tradeoff inherent to any rolling rating system.</p>
   </div>
   <div id="goat-table-wrap"><p class="loading">Loading GOAT table...</p></div>
 </div>
