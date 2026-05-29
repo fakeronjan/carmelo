@@ -106,5 +106,38 @@ for c in _ASIA:     CONFEDERATION[c] = "Asia/Oceania"
 for c in _AFRICA:   CONFEDERATION[c] = "Africa"
 
 
+# Alternate FIBA/IOC/3-letter codes that Wikipedia uses interchangeably for the
+# same nation. Canonicalised to a single code so a team's history isn't split
+# across two codes (e.g. Slovenia appears as both SLO and SVN). Apply via
+# canon_code() at games-load time in carmelo.py / generate_data.py.
+CODE_ALIASES = {
+    "SVN": "SLO",   # Slovenia
+    "LIT": "LTU",   # Lithuania
+    "SPA": "ESP",   # Spain
+    "NGA": "NGR",   # Nigeria
+    "LIB": "LBN",   # Lebanon
+    "BFA": "BKF",   # Burkina Faso
+    "DRC": "COD",   # DR Congo
+    "ESA": "ESA",   # El Salvador (keep; add name below)
+    "GUY": "GUY",   # Guyana (keep; add name below)
+    "TOG": "TOG",   # Togo (keep; add name below)
+}
+
+# Names for codes that only appear via the alias set / minor nations.
+CODE_TO_NAME.update({
+    "ESA": "El Salvador",
+    "GUY": "Guyana",
+    "TOG": "Togo",
+})
+CONFEDERATION.update({
+    "ESA": "Americas", "GUY": "Americas", "TOG": "Africa",
+})
+
+
+def canon_code(code):
+    """Map an alternate code to its canonical code (identity if none)."""
+    return CODE_ALIASES.get(code, code)
+
+
 def name_for(code):
-    return CODE_TO_NAME.get(code, code)
+    return CODE_TO_NAME.get(canon_code(code), code)
