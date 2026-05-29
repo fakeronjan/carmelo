@@ -8,14 +8,17 @@ Emits the MESSI JSON contract so the ported index.html works unchanged:
   seasons/<year>.json     {season, snapshots:[{date, label, prestige, teams:[...]}]}
   teams_index.json        [{name, flag, confederation, slug}, ...]
   teams/<slug>.json       {team, flag, confederation, seasons:{<year>:[rows]}}
-  goat_teams.json         top-50 single-snapshot ratings at tournament finals
-  medals.json             per-country gold/silver/bronze counts (Medals tab)
+  goat_teams.json         top-50 single-snapshot ratings at FLAGSHIP finals
+  champions.json          per-tournament edition podiums (Tournaments tab)
   current_standings.json  most-recent snapshot leaderboard (compatibility)
 
 Sport adaptation vs MESSI:
   - confederations are FIBA zones: Europe / Americas / Asia/Oceania / Africa
   - margins are "points" (basketball), no draws — W-L records only
-  - "League History" tab is replaced by a "Medals" tab built from medals.json
+  - "League History" tab becomes a "Tournaments" tab built from champions.json,
+    one row per edition (Gold / Silver / Bronze) with cumulative medal counts,
+    each medalist's rating/rank at that edition's final snapshot, and that
+    team's W-L within that specific edition.
 """
 import os
 import json
@@ -35,6 +38,15 @@ GOAT_MIN_GAMES = 4
 # Tournaments that crown a champion (qualifiers excluded).
 MEDAL_TOURNAMENTS = ["Olympics", "FIBA World Cup", "EuroBasket",
                      "FIBA AmeriCup", "FIBA Asia Cup", "FIBA AfroBasket"]
+
+# Flagship tournaments anchor GOAT entries (continental championships still feed
+# the rolling rating but do NOT anchor GOAT entries). 👑 = Olympics (the global
+# pinnacle for basketball); the World Cup is the other flagship.
+FLAGSHIP_TOURNAMENTS = ["Olympics", "FIBA World Cup"]
+
+# Tournament selector grouping for the Tournaments tab pills.
+GLOBAL_TOURNAMENTS = ["Olympics", "FIBA World Cup"]
+CONTINENTAL_TOURNAMENT_LIST = ["EuroBasket", "FIBA AmeriCup", "FIBA Asia Cup", "FIBA AfroBasket"]
 
 # Standings season-file labels: tournament -> (label, prestige). Lower prestige
 # = more prestigious (controls dropdown default + ordering), mirroring MESSI.
@@ -239,19 +251,35 @@ def edition_medals(grp):
     return gold, silver, bronze
 
 
+# ── Per-team W-L within a single tournament edition (no draws in basketball) ──
+def edition_team_wl(grp, code):
+    """W-L for `code` within one (tournament, season) edition group."""
+    w = l = 0
+    for _, x in grp.iterrows():
+        if x["team_a"] == code:
+            won = x["score_a"] > x["score_b"]
+        elif x["team_b"] == code:
+            won = x["score_b"] > x["score_a"]
+        else:
+            continue
+        if won:
+            w += 1
+        else:
+            l += 1
+    return f"{w}-{l}"
+
+
 # edition_results[(tournament, season)] = {1:gold,2:silver,3:bronze}, all codes
+# edition_groups[(tournament, season)] = the full edition game DataFrame (for W-L)
 edition_results = {}
-medal_counts = {}  # code -> {"gold","silver","bronze"}
+edition_groups = {}
 mgames = games[games["tournament"].isin(MEDAL_TOURNAMENTS)].copy()
 for (tour, season), grp in mgames.groupby(["tournament", "season"]):
     gold, silver, bronze = edition_medals(grp)
     if gold is None:
         continue
     edition_results[(tour, int(season))] = {1: gold, 2: silver, 3: bronze}
-    for code, m in ((gold, "gold"), (silver, "silver"), (bronze, "bronze")):
-        if code:
-            medal_counts.setdefault(code, {"gold": 0, "silver": 0, "bronze": 0})
-            medal_counts[code][m] += 1
+    edition_groups[(tour, int(season))] = grp
 
 # Per-(code, year) tournament finishes for honor badges.
 country_year_finishes = {}  # (code, year) -> [{tournament, finish}]
@@ -276,25 +304,6 @@ continental_winners = set()
 for (tour, season), res in edition_results.items():
     if tour in CONTINENTAL_TOURNAMENTS and res.get(1):
         continental_winners.add((res[1], season))
-
-
-# ── medals.json: per-country aggregated counts for the Medals tab ────────────
-print("Writing medals.json...")
-medal_rows = []
-for code, m in medal_counts.items():
-    medal_rows.append({
-        "code": code,
-        "team": name_for(code),
-        "flag": flag(code),
-        "confederation": confed_for(code),
-        "gold": m["gold"], "silver": m["silver"], "bronze": m["bronze"],
-        "total": m["gold"] + m["silver"] + m["bronze"],
-    })
-# Sort: gold desc, silver desc, bronze desc, then name.
-medal_rows.sort(key=lambda x: (-x["gold"], -x["silver"], -x["bronze"], x["team"]))
-with open(f"{DATA_DIR}/medals.json", "w") as f:
-    json.dump(medal_rows, f, separators=(",", ":"), ensure_ascii=False)
-print(f"  medals.json: {len(medal_rows)} countries with podiums")
 
 
 # ============================================================
@@ -448,13 +457,19 @@ print(f"  current_standings.json: {len(standings)} teams as of {latest_date}")
 
 
 # ============================================================
-# 3) GOAT TABLE — top-50 single-snapshot ratings at tournament finals
+# 3) GOAT TABLE — top-50 single-snapshot ratings at FLAGSHIP finals
 # ============================================================
 print("Writing goat_teams.json...")
-# Eligibility: medaled (1st/2nd/3rd) in a major tournament that year. Anchor the
-# rating at THAT tournament's final date. Mirrors MESSI's GOAT logic.
+# Eligibility: medaled (1st/2nd/3rd) in a FLAGSHIP tournament (Olympics or FIBA
+# World Cup) that year. Anchor the rating at THAT tournament's final date.
+# Continental championships still feed the rolling rating but do NOT anchor a
+# GOAT entry — this dedupes to one entry per team per flagship edition and
+# drops the overlapping-window clusters (e.g. "USA 2017" from FIBA AmeriCup).
+# Mirrors MESSI's GOAT logic.
 eligible_podiums = []  # (code, year, tournament)
 for (tour, season), res in edition_results.items():
+    if tour not in FLAGSHIP_TOURNAMENTS:
+        continue
     for finish, code in res.items():
         if code:
             eligible_podiums.append((code, season, tour))
@@ -572,6 +587,110 @@ teams_index.sort(key=lambda x: x["name"])
 with open(f"{DATA_DIR}/teams_index.json", "w") as f:
     json.dump(teams_index, f, separators=(",", ":"), ensure_ascii=False)
 print(f"  teams_index.json + {len(teams_index)} team files")
+
+
+# ============================================================
+# 4b) CHAMPIONS TABLE (per tournament edition) — Tournaments tab
+# ============================================================
+# Emits the MESSI champions.json contract, grouped by tournament, editions
+# newest-first. Each medalist cell carries:
+#   - cumulative medal count for that country in that tournament
+#   - rating / rank / conf_rank at that edition's FINAL snapshot
+#   - W-L within that specific edition (CARMELO addition vs MESSI)
+# Editions where no medalist has a rated snapshot at the final date are marked
+# pre_rated (UI renders dashes + † footnote, mirroring MESSI's pre-1986 rows).
+print("Writing champions.json...")
+
+# Final-day rating/rank lookup keyed by (code, date_str) — reuse the GOAT index.
+_df_str = df.copy()
+_df_str["_date_str"] = _df_str["date"].astype(str)
+_champ_idx = _df_str.set_index(["code", "_date_str"])
+
+
+def edition_team_info(code, tour, year):
+    """Rating/rank/conf_rank for a medalist at the edition's final snapshot."""
+    fdate = tournament_final_date.get((tour, int(year)))
+    if fdate is None:
+        return {"rating": None, "rank": None, "conf_rank": None, "confederation": confed_for(code)}
+    try:
+        snap = _champ_idx.loc[(code, str(fdate))]
+    except KeyError:
+        return {"rating": None, "rank": None, "conf_rank": None, "confederation": confed_for(code)}
+    if isinstance(snap, pd.DataFrame):
+        snap = snap.iloc[0]
+    return {
+        "rating":        round3(snap.get("rating")),
+        "rank":          int(snap["rank"]) if not pd.isna(snap.get("rank")) else None,
+        "conf_rank":     int(snap["conf_rank"]) if not pd.isna(snap.get("conf_rank")) else None,
+        "confederation": clean(snap.get("confederation", "")) or confed_for(code),
+    }
+
+
+# Cumulative counts per (tournament, code, slot) tallied oldest-first so each
+# edition reflects the running total THROUGH that edition (matches MESSI).
+champions = {}
+for tour in MEDAL_TOURNAMENTS:
+    years = sorted(y for (t, y) in edition_results if t == tour)
+    champ_counts, ru_counts, third_counts = {}, {}, {}
+    entries_oldest_first = []
+    for year in years:
+        res = edition_results[(tour, year)]
+        grp = edition_groups[(tour, year)]
+        gold, silver, bronze = res.get(1), res.get(2), res.get(3)
+
+        def team_block(code, count_key, counter, _tour=tour, _year=year, _grp=grp):
+            if not code:
+                return None
+            counter[code] = counter.get(code, 0) + 1
+            info = edition_team_info(code, _tour, _year)
+            return {
+                "team":          name_for(code),
+                "flag":          flag(code),
+                "confederation": info["confederation"],
+                "rating":        info["rating"],
+                "rank":          info["rank"],
+                "conf_rank":     info["conf_rank"],
+                count_key:       counter[code],
+                "wl":            edition_team_wl(_grp, code),
+            }
+
+        entries_oldest_first.append({
+            "season":     year,
+            "host_flags": "",  # host data not modeled for CARMELO; UI hides empty
+            "champion":   team_block(gold,   "title_count",     champ_counts),
+            "runner_up":  team_block(silver, "runner_up_count", ru_counts),
+            "third":      team_block(bronze, "third_count",      third_counts),
+        })
+
+    # Mark pre_rated editions (no medalist has a rated snapshot at the final
+    # date) and strip the now-meaningless rating/rank fields. Mirrors MESSI.
+    for entry in entries_oldest_first:
+        rated = any(
+            entry.get(slot) and entry[slot].get("rating") is not None
+            for slot in ("champion", "runner_up", "third")
+        )
+        if rated:
+            continue
+        entry["pre_rated"] = True
+        for slot in ("champion", "runner_up", "third"):
+            tb = entry.get(slot)
+            if not tb:
+                continue
+            for k in ("rating", "rank", "conf_rank", "confederation"):
+                tb.pop(k, None)
+
+    champions[tour] = list(reversed(entries_oldest_first))  # newest-first
+
+with open(f"{DATA_DIR}/champions.json", "w") as f:
+    json.dump(champions, f, separators=(",", ":"), ensure_ascii=False)
+print(f"  champions.json: {sum(len(v) for v in champions.values())} editions "
+      f"across {len(champions)} tournaments")
+
+# Remove the legacy flat Medals output if it exists from a prior run.
+_legacy_medals = f"{DATA_DIR}/medals.json"
+if os.path.exists(_legacy_medals):
+    os.remove(_legacy_medals)
+    print("  removed legacy medals.json")
 
 
 # ============================================================
