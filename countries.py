@@ -167,6 +167,29 @@ CONFEDERATION.update({
 })
 
 
+# DILLON era-aware naming: canonical code -> list of (historical_name,
+# start_iso, end_iso). The engine rates the canonical entity, and the
+# generate_data layer sets per-row display_name so the SPA can render the
+# era-appropriate name inline (e.g. a 1985 USSR snapshot reads "Soviet
+# Union" while still linking to the Russia team page).
+NAME_HISTORY = {
+    "RUS": [
+        # USSR dissolution: December 26, 1991.
+        ("Soviet Union", "1900-01-01", "1991-12-25"),
+        # Unified Team competed at the 1992 Barcelona Summer Olympics
+        # (basketball event closed Aug 8, 1992).
+        ("Unified Team", "1991-12-26", "1992-08-31"),
+    ],
+    "GER": [
+        # German reunification: October 3, 1990. Pre-1990 international
+        # basketball "Germany" is overwhelmingly West Germany (East Germany
+        # was a small basketball nation; some pre-1990 GER games here are
+        # still bundled GDR -- flagged for re-scrape).
+        ("West Germany", "1900-01-01", "1990-10-03"),
+    ],
+}
+
+
 def canon_code(code):
     """Map an alternate code to its canonical code (identity if none)."""
     return CODE_ALIASES.get(code, code)
@@ -221,12 +244,18 @@ def resolve_nation(code, year):
     # malformed 1980 Moscow boxes); leave it as IOC so the scraper drops the
     # game rather than mis-attributing it to a wrong nation.
 
-    # Germany merge: West Germany (FRG, or GER pre-unification) + East
-    # Germany (GDR) all fold into modern Germany.
+    # Germany continuity (user-locked 2026-05-29, Q3): West Germany (FRG)
+    # is the predecessor of unified Germany -- the DFB/DBB federation
+    # continued after 1990 reunification. East Germany (GDR) is a separate
+    # defunct entity (its federations dissolved at reunification) and stays
+    # SEPARATE. Note: existing all_games.csv has GDR games already merged
+    # into GER from a prior policy; a re-scrape is needed to fully separate
+    # them. The display layer (NAME_HISTORY) treats pre-1990 GER as
+    # "West Germany" which is correct for the majority of cases.
     if code == "FRG":
         return "GER", "Germany"
     if code == "GDR":
-        return "GER", "Germany"
+        return "GDR", "East Germany"
     # GER pre-1990 is West Germany competing as "Germany" -> merge to GER.
     # GER 1990+ is unified Germany (already GER). Either way the code is GER.
     if code == "GER":

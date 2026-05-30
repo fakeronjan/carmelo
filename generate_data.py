@@ -27,7 +27,35 @@ import bisect
 import pandas as pd
 from datetime import datetime, timezone, timedelta
 
-from countries import CODE_TO_NAME, CONFEDERATION, canon_code
+from countries import CODE_TO_NAME, CONFEDERATION, canon_code, NAME_HISTORY
+
+# Pre-parsed (code -> [(name, start_date, end_date), ...]) for fast lookup.
+_NAME_HISTORY_PARSED = {
+    code: [(n, pd.to_datetime(s).date(), pd.to_datetime(e).date())
+           for n, s, e in entries]
+    for code, entries in NAME_HISTORY.items()
+}
+# canonical name -> list of historical names (for teams_index + per-team
+# JSON `historical_names` field, used by the SPA's team-select dropdown
+# enrichment and team-page header).
+HISTORICAL_NAMES_BY_NAME = {
+    CODE_TO_NAME.get(code, code): [n for n, _, _ in entries]
+    for code, entries in NAME_HISTORY.items()
+}
+_NAME_TO_CANON_CODE = {v: k for k, v in CODE_TO_NAME.items()}
+
+
+def display_name_at(code, as_of):
+    """DILLON era-aware display name. Returns the historical name in effect on
+    `as_of` (a date or date-like) if NAME_HISTORY covers it; else None."""
+    hist = _NAME_HISTORY_PARSED.get(code)
+    if not hist:
+        return None
+    d = as_of if hasattr(as_of, "year") else pd.to_datetime(as_of).date()
+    for name, start, end in hist:
+        if start <= d <= end:
+            return name
+    return None
 
 DATA_DIR = "docs/data"
 os.makedirs(os.path.join(DATA_DIR, "teams"), exist_ok=True)
@@ -416,6 +444,9 @@ def team_row(r, as_of, slim=False):
         "tournament_finishes": finishes_for(r["code"], r["season"]),
         "continental_winner":  1 if (r["code"], int(r["season"])) in continental_winners else 0,
     }
+    era = display_name_at(r["code"], as_of)
+    if era and era != r["country"]:
+        out["display_name"] = era
     return out
 
 
@@ -522,16 +553,22 @@ else:
 
 goat_data = []
 for i, (_, r) in enumerate(goat_df.iterrows()):
-    goat_data.append({
+    nm = name_for(r["code"])
+    entry = {
         "rank":                i + 1,
-        "team":                name_for(r["code"]),
+        "team":                nm,
         "flag":                flag(r["code"]),
         "confederation":       clean(r["confederation"]),
         "season":              int(r["year"]),
         "rating":              round3(r["rating"]),
         "tournament_finishes": finishes_for(r["code"], r["year"]),
         "continental_winner":  1 if (r["code"], int(r["year"])) in continental_winners else 0,
-    })
+    }
+    fdate = tournament_final_date.get((r.get("tournament", ""), int(r["year"])))
+    era = display_name_at(r["code"], fdate) if fdate else None
+    if era and era != nm:
+        entry["display_name"] = era
+    goat_data.append(entry)
 with open(f"{DATA_DIR}/goat_teams.json", "w") as f:
     json.dump(goat_data, f, separators=(",", ":"), ensure_ascii=False)
 print(f"  goat_teams.json: {len(goat_data)} teams")
@@ -561,7 +598,11 @@ for code in all_codes:
     team_slug = slug(name)
     confed = confed_for(code)
     fl = flag(code)
-    teams_index.append({"name": name, "flag": fl, "confederation": confed, "slug": team_slug})
+    hist_names = HISTORICAL_NAMES_BY_NAME.get(name, [])
+    idx_entry = {"name": name, "flag": fl, "confederation": confed, "slug": team_slug}
+    if hist_names:
+        idx_entry["historical_names"] = hist_names
+    teams_index.append(idx_entry)
 
     seasons = {}
     for season, sdf in tdf.groupby("season"):
@@ -571,8 +612,9 @@ for code in all_codes:
             continue
         fin = finishes_for(code, season)
         won_cont = (code, int(season)) in continental_winners
-        seasons[int(season)] = [
-            {
+        rows = []
+        for _, r in sdf.sort_values("date").iterrows():
+            row = {
                 "date":                str(r["date"]),
                 "rating":              round3(r["rating"]),
                 "rank":                int(r["rank"]) if not pd.isna(r["rank"]) else None,
@@ -585,12 +627,17 @@ for code in all_codes:
                 "tournament_finishes": fin,
                 "continental_winner":  1 if won_cont else 0,
             }
-            for _, r in sdf.sort_values("date").iterrows()
-        ]
+            era = display_name_at(code, r["date"])
+            if era and era != name:
+                row["display_name"] = era
+            rows.append(row)
+        seasons[int(season)] = rows
 
+    team_doc = {"team": name, "flag": fl, "confederation": confed, "seasons": seasons}
+    if hist_names:
+        team_doc["historical_names"] = hist_names
     with open(f"{DATA_DIR}/teams/{team_slug}.json", "w") as f:
-        json.dump({"team": name, "flag": fl, "confederation": confed, "seasons": seasons},
-                  f, separators=(",", ":"), ensure_ascii=False)
+        json.dump(team_doc, f, separators=(",", ":"), ensure_ascii=False)
 
 teams_index.sort(key=lambda x: x["name"])
 with open(f"{DATA_DIR}/teams_index.json", "w") as f:
@@ -652,8 +699,9 @@ for tour in MEDAL_TOURNAMENTS:
                 return None
             counter[code] = counter.get(code, 0) + 1
             info = edition_team_info(code, _tour, _year)
-            return {
-                "team":          name_for(code),
+            nm = name_for(code)
+            block = {
+                "team":          nm,
                 "flag":          flag(code),
                 "confederation": info["confederation"],
                 "rating":        info["rating"],
@@ -662,6 +710,11 @@ for tour in MEDAL_TOURNAMENTS:
                 count_key:       counter[code],
                 "wl":            edition_team_wl(_grp, code),
             }
+            fdate = tournament_final_date.get((_tour, _year))
+            era = display_name_at(code, fdate) if fdate else None
+            if era and era != nm:
+                block["display_name"] = era
+            return block
 
         entries_oldest_first.append({
             "season":     year,
