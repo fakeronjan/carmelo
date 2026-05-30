@@ -303,13 +303,28 @@ for (tour, season), res in edition_results.items():
 # ============================================================
 # TOURNAMENT FINAL DATES (per tournament+year) — labels, GOAT + year anchors
 # ============================================================
+# In-progress gate (see [[feedback-in-progress-season-gate]]): only assign a
+# "final date" to a tournament edition that has actually concluded. Signals:
+# (a) a game with round=='final' or 'bronze', (b) a curated podium entry.
+# Without this gate an in-progress event's latest played game-day gets
+# labeled the "Final", which is wrong.
+podium_editions = set(edition_results.keys())
 tournament_final_date = {}  # (tournament, year) -> final date
 for tour in MEDAL_TOURNAMENTS:
     tg = games[games["tournament"] == tour]
     if tg.empty:
         continue
     for year, grp in tg.groupby("season"):
-        tournament_final_date[(tour, int(year))] = grp["date"].max()
+        year = int(year)
+        if "round" in grp.columns:
+            medal_dates = grp.loc[grp["round"].isin(["final", "bronze"]), "date"]
+        else:
+            medal_dates = []
+        if len(medal_dates):
+            tournament_final_date[(tour, year)] = medal_dates.max()
+        elif (tour, year) in podium_editions:
+            tournament_final_date[(tour, year)] = grp["date"].max()
+        # else: in progress -- no Final label assigned
 
 final_dates = set(tournament_final_date.values())
 df["is_end_of_season"] = df["date"].apply(lambda d: 1 if d in final_dates else 0)
