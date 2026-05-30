@@ -1,8 +1,8 @@
 # ============================================================
 # CARMELO - International Men's Basketball Power Ratings
-# Massey-style weighted-least-squares rolling rating engine.
+# fakeronjan WLS weighted-least-squares rolling rating engine.
 #
-# Cloned from NBA/duncan.py (the DUNCAN engine): same WLS Massey solver, same
+# Cloned from NBA/duncan.py (the DUNCAN engine): same WLS fakeronjan WLS solver, same
 # linear recency decay across a rolling game-day window, same sign-preserving
 # margin-cap transform, same zero-sum constraint via a high-weight extra row.
 #
@@ -72,7 +72,7 @@ RATINGS_CSV = "carmelo_ratings.csv"
 
 
 # ============================================================
-# MASSEY WLS SOLVER  (copied from DUNCAN, team-keyed for intl)
+# FAKERONJAN WLS SOLVER  (copied from DUNCAN, team-keyed for intl)
 # ============================================================
 
 def _apply_margin_transform(margin, transform, cap):
@@ -88,12 +88,12 @@ def _apply_margin_transform(margin, transform, cap):
     raise ValueError(f"Unknown MARGIN_TRANSFORM: {transform}")
 
 
-def _solve_massey(window_df):
-    """WLS Massey solve on one rolling window. Builds X (n_games x n_teams)
+def _solve_wls(window_df):
+    """WLS fakeronjan WLS solve on one rolling window. Builds X (n_games x n_teams)
     with +1 home / -1 away, y = transformed (HCA-adjusted) home margin, W =
     combined observation weight (recency x tier). Zero-sum constraint via a
     high-weight extra row. WLS via sqrt(w) row-scaling -> ordinary lstsq.
-    (Same math as DUNCAN _solve_massey.)"""
+    (Same math as DUNCAN _solve_wls.)"""
     teams = sorted(set(window_df["team_a"]) | set(window_df["team_b"]))
     team_idx = {t: i for i, t in enumerate(teams)}
     n_teams = len(teams)
@@ -210,7 +210,7 @@ def compute_ratings(df):
         if len(window) < 10:
             continue
 
-        ranked = _solve_massey(window)
+        ranked = _solve_wls(window)
         if ranked["rating"].isna().any() or np.isinf(ranked["rating"]).any():
             continue
 
