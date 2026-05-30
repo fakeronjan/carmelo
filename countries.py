@@ -248,10 +248,13 @@ def resolve_nation(code, year):
     # is the predecessor of unified Germany -- the DFB/DBB federation
     # continued after 1990 reunification. East Germany (GDR) is a separate
     # defunct entity (its federations dissolved at reunification) and stays
-    # SEPARATE. Note: existing all_games.csv has GDR games already merged
-    # into GER from a prior policy; a re-scrape is needed to fully separate
-    # them. The display layer (NAME_HISTORY) treats pre-1990 GER as
-    # "West Germany" which is correct for the majority of cases.
+    # SEPARATE. Verified 2026-05-30 by re-scraping every pre-1990 event in
+    # CARMELO's manifest: East Germany NEVER appears as a participant in
+    # any of these basketball editions (Olympics 1936/1972/1984 + FIBA WC
+    # 1986). All 18 pre-1990 "GER" rows in all_games.csv are West Germany,
+    # already correctly canonicalized FRG -> GER under the current policy,
+    # and rendered as "West Germany" inline via the NAME_HISTORY display
+    # layer. No re-scrape needed.
     if code == "FRG":
         return "GER", "Germany"
     if code == "GDR":
