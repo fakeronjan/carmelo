@@ -48,7 +48,12 @@ RECENCY_FLOOR = 0.15
 # Keeps 40-point blowouts from dominating the regression; below the cap the
 # response is raw point margin.
 MARGIN_TRANSFORM = "cap"
-MARGIN_CAP = 25
+# International basketball has much bigger blowouts than NBA (USA / SRB / ESP
+# routinely beat tier-3 nations by 40-60). DUNCAN's cap=25 capped ~19% of intl
+# games and flattened all 8 Dream Team 1992 Olympics games (~150 points of
+# margin signal lost). Raised to 50 per user 2026-05-30 -- only ~5% of games
+# (true 50+ blowouts) still cap, and the Dream Team's actual dominance shows.
+MARGIN_CAP = 50
 
 # Home-court advantage (raw points) subtracted from the home margin BEFORE the
 # transform. Applied only to non-neutral games (WC qualifiers). Neutral-site
