@@ -17,7 +17,7 @@
 # Data-integrity guards (cloned from soccer us-mex/cobi.py):
 #   * Append-only union lives in build_games.py (the games CSV is the DB).
 #   * This engine recomputes ratings from scratch every run (no positional
-#     ranking_id cache) — simplest and safe for the sparse intl calendar, which
+#     ranking_id cache) - simplest and safe for the sparse intl calendar, which
 #     is small enough that a full rebuild is cheap. This sidesteps the
 #     cache-validity desync class of bug entirely.
 # ============================================================
@@ -36,8 +36,8 @@ from countries import CODE_TO_NAME, CONFEDERATION, canon_code
 # data: 150 game-days spanned ~6yr in the modern qualifier era and 11+yr
 # historically, so "current form" wasn't era-consistent. A fixed calendar
 # window keeps it consistent across all eras. 4yr ≈ one Olympic cycle + an
-# offset World Cup + a EuroBasket — enough opponents per snapshot, recent
-# enough to mean "current form". START VALUE — tune vs GOAT face-validity.
+# offset World Cup + a EuroBasket - enough opponents per snapshot, recent
+# enough to mean "current form". START VALUE - tune vs GOAT face-validity.
 WINDOW_YEARS = 4
 WINDOW_DAYS = int(WINDOW_YEARS * 365.25)
 # Oldest in-window game keeps at least this weight (sparse-era floor, so a
@@ -279,7 +279,7 @@ def attach_last_game(ratings, games):
 # ============================================================
 
 if __name__ == "__main__":
-    print(f"CARMELO rating engine — window={WINDOW_YEARS}yr calendar ({WINDOW_DAYS}d), "
+    print(f"CARMELO rating engine - window={WINDOW_YEARS}yr calendar ({WINDOW_DAYS}d), "
           f"floor={RECENCY_FLOOR}, cap={MARGIN_CAP}, HCA={HOME_COURT_ADJUSTMENT} (non-neutral only)")
     games = load_games()
     print(f"Loaded {len(games):,} games over "

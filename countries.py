@@ -204,7 +204,7 @@ def canon_code(code):
 # Montenegro), so resolution MUST be keyed on the GAME year, not the flag-year
 # suffix Wikipedia sometimes carries ({{bk|YUG|1998}} -> resolve by game year).
 #
-# RULES (user-reviewed; keep EXACT — do not improvise):
+# RULES (user-reviewed; keep EXACT - do not improvise):
 #   URS  any year                 -> RUS  "Russia"                  [MERGE]
 #   FRG/GER pre-1990, GDR any     -> GER  "Germany"                 [MERGE]
 #   YUG  year < 1992              -> YUG  "Yugoslavia"              [SEPARATE]
@@ -234,7 +234,7 @@ def resolve_nation(code, year):
         return "RUS", "Russia"
 
     # 1992 Unified Team (former Soviet republics competing under the IOC/EUN
-    # flag, code "IOC"/"EUN") is the direct USSR continuation in 1992 — folded
+    # flag, code "IOC"/"EUN") is the direct USSR continuation in 1992 - folded
     # into Russia to keep the Soviet -> Russia lineage unbroken. (FLAGGED: a
     # documented extension of the user's URS->RUS merge rule, since the spec did
     # not enumerate the Unified Team explicitly.)
@@ -264,7 +264,7 @@ def resolve_nation(code, year):
     if code == "GER":
         return "GER", "Germany"
 
-    # Yugoslav lineage — three SEPARATE entities by era.
+    # Yugoslav lineage - three SEPARATE entities by era.
     if code == "YUG":
         if y is not None and y < 1992:
             return "YUG", "Yugoslavia"            # SFR Yugoslavia

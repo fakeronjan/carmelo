@@ -152,7 +152,7 @@ def union_with_existing(fresh_df, path="all_games.csv"):
     """Treat the committed games file as the persistent database: a run may ADD
     new games or CORRECT existing ones, but must never DELETE games we already
     have just because this run's scrape came back short. (Cloned from COBI's
-    union_with_existing — Wikipedia raw fetches can flake / 404 transiently.)
+    union_with_existing - Wikipedia raw fetches can flake / 404 transiently.)
     Fresh rows win for games present in both (so score corrections land);
     DB-only games are preserved."""
     if not os.path.exists(path):
@@ -163,7 +163,7 @@ def union_with_existing(fresh_df, path="all_games.csv"):
     prev = prev_df.copy();   prev["_src_priority"] = 1
     # Normalize date to an ISO string in BOTH frames before dedup: fresh carries
     # datetime.date objects, prev carries strings from CSV, and the mixed types
-    # silently defeat drop_duplicates — which would duplicate every game on a
+    # silently defeat drop_duplicates - which would duplicate every game on a
     # re-run. (Bit CARMELO 2026-05-29.)
     for _d in (fresh, prev):
         _d["date"] = pd.to_datetime(_d["date"], errors="coerce").dt.strftime("%Y-%m-%d")
@@ -174,7 +174,7 @@ def union_with_existing(fresh_df, path="all_games.csv"):
     preserved = sum(1 for k in map(tuple, prev[key].astype(str).values) if k not in fresh_keys)
     if preserved:
         print(f"[db-union] preserved {preserved:,} games already in the database "
-              f"that this run's scrape did not return (flaky source — not deleting history)")
+              f"that this run's scrape did not return (flaky source - not deleting history)")
     return combined
 
 

@@ -37,7 +37,7 @@ HEADERS = {"User-Agent": "carmelo-ratings/1.0 (international basketball ratings;
 def fetch_wikitext(title, max_retries=3):
     """Fetch raw wikitext for a Wikipedia page title. Returns '' on failure
     (NEVER raises) so a flaky fetch degrades to 'no new games' rather than
-    crashing the run — the append-only union downstream protects history."""
+    crashing the run - the append-only union downstream protects history."""
     url = WIKI_RAW.format(title=requests.utils.quote(title.replace(" ", "_")))
     for attempt in range(max_retries):
         try:
@@ -63,7 +63,7 @@ def _balanced_blocks(text, opener="{{basketballbox"):
     text (NOT text.lower()): str.lower() can CHANGE string length for some
     Unicode code points (e.g. Turkish 'İ' -> 'i̇' is two code points), which
     would shift every offset and make the brace scanner index the wrong region
-    — silently truncating blocks on pages that contain such characters. Old
+    - silently truncating blocks on pages that contain such characters. Old
     EuroBasket/World-Championship pages (Turkish player names) tripped this.
     """
     op_re = re.compile(re.escape(opener), re.IGNORECASE)
@@ -120,7 +120,7 @@ def _arg_to_code(arg):
     code = NAME_TO_CODE.get(arg)
     if code:
         return code
-    # Some args are codes given in mixed case (rare) — accept if 2-4 letters.
+    # Some args are codes given in mixed case (rare) - accept if 2-4 letters.
     if re.fullmatch(r"[A-Za-z]{2,4}", arg):
         return arg.upper()
     return None
@@ -134,7 +134,7 @@ def _arg_to_code(arg):
 # "Italy"). When NO wikilink disambiguates the cell (some 1980 boxes carry only
 # a bare {{flagicon|IOC}} with the team buried in player stats), the team is
 # unidentifiable, so the game is DROPPED rather than mis-attributed to a wrong
-# nation — never publish "IOC" as if it were a country.
+# nation - never publish "IOC" as if it were a country.
 _PLACEHOLDER_CODES = {"IOC"}
 
 
@@ -208,7 +208,7 @@ def _parse_date(date_raw, season=None):
             season_year = None
 
     # Date-template handling: {{dts|...|Y|M|D}}, {{Start date|Y|M|D|df=yes}},
-    # {{End date|...}} — extract the positional Y|M|D (skipping named args like
+    # {{End date|...}} - extract the positional Y|M|D (skipping named args like
     # df=yes/format=/link=). No closing-brace required since _field can truncate
     # the value at the template's inner }}.
     mdts = re.search(r"\{\{\s*(?:dts|start[\s_]?date|end[\s_]?date)\b([^}]*)",
@@ -369,7 +369,7 @@ def discover_pages(main_title, wikitext, template_prefix=None):
 
 
 # Sub-pages whose titles contain any of these substrings are NOT followed when
-# scraping a finals event — they are separate events (qualifiers) that the
+# scraping a finals event - they are separate events (qualifiers) that the
 # driver scrapes on their own with their own tournament tag / tier / neutral
 # flag. Without this, a World Cup finals page would pull in ~300 qualifier
 # games and mis-tag them as neutral top-tier finals games.
@@ -393,7 +393,7 @@ def scrape_event(main_title, tournament, season, neutral=True,
         finals events at a single neutral host; False for home-and-away
         qualifiers). The driver sets this per event.
     follow_qualifiers: when False (default for finals events) sub-pages whose
-        title mentions 'qualification' are skipped — they are scraped as their
+        title mentions 'qualification' are skipped - they are scraped as their
         own events. Set True when scraping a qualification event directly.
     """
     main_wt = fetch_wikitext(main_title)

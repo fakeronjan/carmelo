@@ -1,5 +1,5 @@
 """
-generate_data.py — reads carmelo_ratings.csv + all_games.csv and writes the JSON
+generate_data.py - reads carmelo_ratings.csv + all_games.csv and writes the JSON
 the CARMELO web frontend (a MESSI-clone single-page app) consumes. Run after
 carmelo.py. Outputs to docs/data/.
 
@@ -14,7 +14,7 @@ Emits the MESSI JSON contract so the ported index.html works unchanged:
 
 Sport adaptation vs MESSI:
   - confederations are FIBA zones: Europe / Americas / Asia/Oceania / Africa
-  - margins are "points" (basketball), no draws — W-L records only
+  - margins are "points" (basketball), no draws - W-L records only
   - "League History" tab becomes a "Tournaments" tab built from champions.json,
     one row per edition (Gold / Silver / Bronze) with cumulative medal counts,
     each medalist's rating/rank at that edition's final snapshot, and that
@@ -211,7 +211,7 @@ df["is_game_day"] = 1
 
 # ── W-L record over the rating WINDOW, AS OF a snapshot date ─────────────────
 # Each snapshot shows its team's W-L over the WINDOW_YEARS ending at THAT
-# snapshot's date — so a 2004 snapshot shows 2000-2004 records, matching its
+# snapshot's date - so a 2004 snapshot shows 2000-2004 records, matching its
 # rating window. (A global-latest-window version made historical season files
 # show present-day records, e.g. currently-banned Russia as 0-0 next to a 2004
 # rating.) WINDOW_YEARS must match carmelo.py's window.
@@ -241,7 +241,7 @@ def record_str(code, as_of):
 
 
 # ============================================================
-# MEDALS (per edition gold/silver/bronze) — CURATED authoritative source
+# MEDALS (per edition gold/silver/bronze) - CURATED authoritative source
 # ============================================================
 # Podiums are read from curated_podiums.csv (the authoritative medalist table,
 # sourced from Wikipedia per-tournament results summaries with era-aware nation
@@ -329,7 +329,7 @@ for (tour, season), res in edition_results.items():
 
 
 # ============================================================
-# TOURNAMENT FINAL DATES (per tournament+year) — labels, GOAT + year anchors
+# TOURNAMENT FINAL DATES (per tournament+year) - labels, GOAT + year anchors
 # ============================================================
 # In-progress gate (see [[feedback-in-progress-season-gate]]): only assign a
 # "final date" to a tournament edition that has actually concluded. Signals:
@@ -376,7 +376,7 @@ for tour in MEDAL_TOURNAMENTS:
 
 # Latest known confederation per code.
 team_confed = df.dropna(subset=["confederation"]).groupby("code")["confederation"].last().to_dict()
-# Last game-day per (code, year) — fallback anchor.
+# Last game-day per (code, year) - fallback anchor.
 team_year_last_game = (
     df[df["is_game_day"] == 1].dropna(subset=["season"])
       .groupby(["code", "season"])["date"].max().to_dict()
@@ -479,7 +479,7 @@ print(f"  {len(all_seasons)} season files + seasons_index.json")
 
 
 # ============================================================
-# 2) CURRENT STANDINGS (latest snapshot) — compatibility output
+# 2) CURRENT STANDINGS (latest snapshot) - compatibility output
 # ============================================================
 latest_id = int(df["ranking_id"].max())
 latest = df[(df["ranking_id"] == latest_id) & df["eligible"]].sort_values("rank")
@@ -497,13 +497,13 @@ print(f"  current_standings.json: {len(standings)} teams as of {latest_date}")
 
 
 # ============================================================
-# 3) GOAT TABLE — top-50 single-snapshot ratings at FLAGSHIP finals
+# 3) GOAT TABLE - top-50 single-snapshot ratings at FLAGSHIP finals
 # ============================================================
 print("Writing goat_teams.json...")
 # Eligibility: medaled (1st/2nd/3rd) in a FLAGSHIP tournament (Olympics or FIBA
 # World Cup) that year. Anchor the rating at THAT tournament's final date.
 # Continental championships still feed the rolling rating but do NOT anchor a
-# GOAT entry — this dedupes to one entry per team per flagship edition and
+# GOAT entry - this dedupes to one entry per team per flagship edition and
 # drops the overlapping-window clusters (e.g. "USA 2017" from FIBA AmeriCup).
 # Mirrors MESSI's GOAT logic.
 eligible_podiums = []  # (code, year, tournament)
@@ -582,7 +582,7 @@ team_data = df[(df["is_game_day"] == 1) | (df["is_end_of_season"] == 1) |
                (df["is_year_anchor"] == 1)].copy()
 team_data = team_data.sort_values(["code", "date"])
 
-# (code, year) where the team actually played >= 1 game — drop ghost years.
+# (code, year) where the team actually played >= 1 game - drop ghost years.
 played_team_years = set(
     (c, int(y)) for c, y in
     df.loc[df["is_game_day"] == 1, ["code", "season"]].dropna().itertuples(index=False, name=None)
@@ -646,7 +646,7 @@ print(f"  teams_index.json + {len(teams_index)} team files")
 
 
 # ============================================================
-# 4b) CHAMPIONS TABLE (per tournament edition) — Tournaments tab
+# 4b) CHAMPIONS TABLE (per tournament edition) - Tournaments tab
 # ============================================================
 # Emits the MESSI champions.json contract, grouped by tournament, editions
 # newest-first. Each medalist cell carries:
@@ -657,7 +657,7 @@ print(f"  teams_index.json + {len(teams_index)} team files")
 # pre_rated (UI renders dashes + † footnote, mirroring MESSI's pre-1986 rows).
 print("Writing champions.json...")
 
-# Final-day rating/rank lookup keyed by (code, date_str) — reuse the GOAT index.
+# Final-day rating/rank lookup keyed by (code, date_str) - reuse the GOAT index.
 _df_str = df.copy()
 _df_str["_date_str"] = _df_str["date"].astype(str)
 _champ_idx = _df_str.set_index(["code", "_date_str"])
