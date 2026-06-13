@@ -21,6 +21,7 @@ Sport adaptation vs MESSI:
     team's W-L within that specific edition.
 """
 import os
+import glob
 import json
 import re
 import bisect
@@ -382,6 +383,7 @@ team_year_last_game = (
       .groupby(["code", "season"])["date"].max().to_dict()
 )
 
+_CURRENT_YEAR = datetime.now(timezone.utc).year  # in-progress-year gate
 team_year_anchor = {}  # (code, year) -> (date, label)
 for (code, year_f), last_game in team_year_last_game.items():
     year = int(year_f)
@@ -400,7 +402,7 @@ for (code, year_f), last_game in team_year_last_game.items():
             chosen = (tournament_final_date[(confed_t, year)], f"End of {confed_t}")
     # 4. Fallback: last game-day of the year
     if chosen is None:
-        chosen = (last_game, "End of year")
+        chosen = (last_game, "End of year" if year < _CURRENT_YEAR else "Current")
     team_year_anchor[(code, year)] = chosen
 
 df["is_year_anchor"] = 0
@@ -642,6 +644,15 @@ for code in all_codes:
 teams_index.sort(key=lambda x: x["name"])
 with open(f"{DATA_DIR}/teams_index.json", "w") as f:
     json.dump(teams_index, f, separators=(",", ":"), ensure_ascii=False)
+# Prune orphaned team files: when the data source renames an entity (e.g.
+# 'China PR' -> 'China') or drops one, the old-slug file lingers - unreachable
+# from the UI (not in teams_index) but serving frozen stale data. Remove any
+# team file whose slug is no longer in the live index.
+_live_team_files = {f"{t['slug']}.json" for t in teams_index}
+for _f in glob.glob(f"{DATA_DIR}/teams/*.json"):
+    if os.path.basename(_f) not in _live_team_files:
+        os.remove(_f)
+        print(f"  Pruned orphaned team file: {os.path.basename(_f)}")
 print(f"  teams_index.json + {len(teams_index)} team files")
 
 
