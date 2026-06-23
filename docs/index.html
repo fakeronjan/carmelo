@@ -644,8 +644,8 @@ async function teamLinkClick(slug, season) {
   const wantSingle = season != null && season !== '';
   tsView = wantSingle ? 'single' : 'cross';
   buildPillsFromOpts('ts-view-pills', [
-    { value: 'cross',  label: 'All season summary' },
-    { value: 'single', label: 'All games within one season' },
+    { value: 'cross',  label: 'Yearly summary' },
+    { value: 'single', label: 'All games within one year' },
   ], tsView, v => {
     tsView = v;
     document.getElementById('season-select').style.display   = (v === 'single') ? '' : 'none';
@@ -809,7 +809,7 @@ async function loadSeason(season) {
     selectSnapshot(defaultDate);
   } catch(e) {
     document.getElementById('standings-table-wrap').innerHTML =
-      `<p class="error">Could not load season data.</p>`;
+      `<p class="error">Could not load standings.</p>`;
   }
 }
 
@@ -929,8 +929,8 @@ buildConfPills('ts-conf-pills', false, tsConf, v => {
   document.getElementById('season-select').innerHTML = '';
 });
 buildPillsFromOpts('ts-view-pills', [
-  { value: 'cross',  label: 'All season summary' },
-  { value: 'single', label: 'All games within one season' },
+  { value: 'cross',  label: 'Yearly summary' },
+  { value: 'single', label: 'All games within one year' },
 ], tsView, v => {
   tsView = v;
   document.getElementById('season-select').style.display   = (v === 'single') ? '' : 'none';
