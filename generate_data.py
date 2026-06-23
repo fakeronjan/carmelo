@@ -580,6 +580,74 @@ print(f"  goat_teams.json: {len(goat_data)} teams")
 # 4) PER-TEAM JSON FILES + teams_index.json
 # ============================================================
 print("Writing per-team JSON files...")
+
+# ── Olympic per-edition record + match list ─────────────────────────────────
+# Combined W-L per edition (basketball has no draws). NOTE: no group/knockout
+# split here - Olympic basketball has no round data and runs 5th-8th
+# classification brackets alongside the medal bracket, so the split can't be
+# derived reliably (see FAN_STATUS.md); fabricating one is off the table. Each
+# match line carries the opponent's pre-match rank/rating. games team_a/team_b
+# are canon codes; the ratings df is keyed by the same code.
+from bisect import bisect_left
+
+_team_snaps = {}
+for _cd, _sub in df[["code", "date", "rank", "rating"]].dropna(subset=["date"]).groupby("code"):
+    _sub = _sub.sort_values("date")
+    _team_snaps[_cd] = (list(_sub["date"]), list(_sub["rank"]), list(_sub["rating"]))
+
+
+def opp_standing(code, match_date):
+    """Opponent (rank, rating) as of just before match_date; None if unknown."""
+    snap = _team_snaps.get(code)
+    if not snap:
+        return None
+    dates, ranks, ratings = snap
+    i = bisect_left(dates, match_date)
+    if i == 0:
+        return None
+    rk, rt = ranks[i - 1], ratings[i - 1]
+    if pd.isna(rk) or pd.isna(rt):
+        return None
+    return int(rk), round(float(rt), 2)
+
+
+_oly_team_games = {}
+for _, _g in games[games["tournament"] == "Olympics"].iterrows():
+    if pd.isna(_g["date"]) or pd.isna(_g["score_a"]) or pd.isna(_g["score_b"]):
+        continue
+    _yr = int(_g["season"])
+    _sa, _sb = int(_g["score_a"]), int(_g["score_b"])
+    _neu = bool(_g.get("neutral"))
+    _oly_team_games.setdefault((_g["team_a"], _yr), []).append(
+        {"date": _g["date"], "gf": _sa, "ga": _sb, "opp": _g["team_b"], "home": True, "neutral": _neu})
+    _oly_team_games.setdefault((_g["team_b"], _yr), []).append(
+        {"date": _g["date"], "gf": _sb, "ga": _sa, "opp": _g["team_a"], "home": False, "neutral": _neu})
+
+_oly_record = {}
+for (_code, _yr), _gl in _oly_team_games.items():
+    _gl.sort(key=lambda m: m["date"])
+    _w = _l = 0
+    _matches = []
+    for _m in _gl:
+        _gf, _ga = _m["gf"], _m["ga"]
+        _letter = "W" if _gf > _ga else "L"  # basketball: no ties
+        _venue = " vs. (N) " if _m["neutral"] else (" vs. " if _m["home"] else " @ ")
+        _st = opp_standing(_m["opp"], _m["date"])
+        _matches.append({"s": f"{_letter} {_gf}-{_ga}{_venue}{name_for(_m['opp'])}",
+                         "r": _st[0] if _st else None, "g": _st[1] if _st else None})
+        if _gf > _ga:
+            _w += 1
+        else:
+            _l += 1
+    _oly_record[(_code, _yr)] = {"w": _w, "l": _l, "matches": _matches}
+
+
+def oly_record(code, season):
+    if pd.isna(season):
+        return None
+    return _oly_record.get((code, int(season)))
+
+
 team_data = df[(df["is_game_day"] == 1) | (df["is_end_of_season"] == 1) |
                (df["is_year_anchor"] == 1)].copy()
 team_data = team_data.sort_values(["code", "date"])
@@ -633,6 +701,18 @@ for code in all_codes:
             if era and era != name:
                 row["display_name"] = era
             rows.append(row)
+        # Attach the Olympic edition record (the row the Olympics view filters
+        # on): completed editions to the 'End of Olympic basketball' anchor,
+        # in-progress to the latest snapshot.
+        _oly_rec = oly_record(code, season)
+        if _oly_rec and rows:
+            _anchors = [row for row in rows if row["year_anchor_label"] == "End of Olympic basketball"]
+            if _anchors:
+                for row in _anchors:
+                    row["oly_record"] = _oly_rec
+            else:
+                rows[-1]["oly_record"] = _oly_rec
+                rows[-1]["oly_in_progress"] = 1
         seasons[int(season)] = rows
 
     team_doc = {"team": name, "flag": fl, "confederation": confed, "seasons": seasons}
