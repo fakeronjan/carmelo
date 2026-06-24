@@ -58,6 +58,21 @@ def display_name_at(code, as_of):
             return name
     return None
 
+_LM_RE = re.compile(r"^([WLDT]) (\d+-\d+) (vs\. \(N\) |vs\. |@ )(.+?)( \([^)]*\))?$")
+
+
+def era_fix_lm(lm, d):
+    """Rewrite a last_game string's opponent to its era-correct name (code-keyed)."""
+    if not lm:
+        return lm
+    m = _LM_RE.match(lm)
+    if not m:
+        return lm
+    res, score, venue, opp, comp = m.groups()
+    era = display_name_at(_NAME_TO_CANON_CODE.get(opp), d)
+    return f"{res} {score} {venue}{era}{comp or ''}" if era else lm
+
+
 DATA_DIR = "docs/data"
 os.makedirs(os.path.join(DATA_DIR, "teams"), exist_ok=True)
 os.makedirs(os.path.join(DATA_DIR, "seasons"), exist_ok=True)
@@ -441,7 +456,7 @@ def team_row(r, as_of, slim=False):
         "confederation":       clean(r["confederation"]),
         "rating":              round3(r["rating"]),
         "record":              record_str(r["code"], as_of),
-        "last_match":          clean(r["last_game"]),
+        "last_match":          era_fix_lm(clean(r["last_game"]), r["date"]),
         "last_match_date":     clean(r["last_game_date"]),
         "tournament_finishes": finishes_for(r["code"], r["season"]),
         "continental_winner":  1 if (r["code"], int(r["season"])) in continental_winners else 0,
@@ -689,7 +704,7 @@ for code in all_codes:
                 "rating":              round3(r["rating"]),
                 "rank":                int(r["rank"]) if not pd.isna(r["rank"]) else None,
                 "conf_rank":           int(r["conf_rank"]) if not pd.isna(r["conf_rank"]) else None,
-                "last_match":          clean(r["last_game"]),
+                "last_match":          era_fix_lm(clean(r["last_game"]), r["date"]),
                 "is_end_of_season":    int(r["is_end_of_season"]),
                 "is_game_day":         int(r["is_game_day"]),
                 "is_year_anchor":      int(r.get("is_year_anchor", 0) or 0),
