@@ -458,14 +458,14 @@
   <div id="chart-wrap" style="display:none">
     <svg id="season-chart"></svg>
   </div>
-  <div id="team-table-wrap"><p class="loading">Select a country above.</p></div>
+  <div id="team-table-wrap"><p class="loading">Select a country above</p></div>
 </div>
 
 <!-- ── TOURNAMENTS (per-edition podiums) ─────────────────────────────────── -->
 <div id="league-history" class="tab">
   <div class="league-pills" id="history-world-pills" style="margin-bottom:6px"></div>
   <div class="league-pills" id="history-continental-pills"></div>
-  <div id="history-table-wrap"><p class="loading">Select a tournament above.</p></div>
+  <div id="history-table-wrap"><p class="loading">Select a tournament above</p></div>
 </div>
 
 <!-- ── GOAT TABLE ───────────────────────────────────────────────────────── -->
@@ -636,7 +636,7 @@ async function teamLinkClick(slug, season, viewOverride) {
     populateTeams(v);
     document.getElementById('chart-wrap').style.display = 'none';
     document.getElementById('team-table-wrap').innerHTML =
-      '<p class="loading">Select a country above.</p>';
+      '<p class="loading">Select a country above</p>';
     document.getElementById('season-select').innerHTML = '';
   });
   populateTeams(tsConf);
@@ -768,7 +768,7 @@ async function initStandings() {
     await loadSeason(meta.seasons[0]);
   } catch(e) {
     document.getElementById('standings-table-wrap').innerHTML =
-      `<p class="error">Could not load standings.</p>`;
+      `<p class="error">Could not load standings</p>`;
   }
 }
 
@@ -811,7 +811,7 @@ async function loadSeason(season) {
     selectSnapshot(defaultDate);
   } catch(e) {
     document.getElementById('standings-table-wrap').innerHTML =
-      `<p class="error">Could not load standings.</p>`;
+      `<p class="error">Could not load standings</p>`;
   }
 }
 
@@ -927,7 +927,7 @@ buildConfPills('ts-conf-pills', false, tsConf, v => {
   populateTeams(v);
   document.getElementById('chart-wrap').style.display = 'none';
   document.getElementById('team-table-wrap').innerHTML =
-    '<p class="loading">Select a country above.</p>';
+    '<p class="loading">Select a country above</p>';
   document.getElementById('season-select').innerHTML = '';
 });
 buildPillsFromOpts('ts-view-pills', [
@@ -954,7 +954,7 @@ async function loadTeam(slug) {
       teamCache[slug] = await res.json();
     } catch(e) {
       document.getElementById('team-table-wrap').innerHTML =
-        '<p class="error">Could not load team data.</p>';
+        '<p class="error">Could not load team data</p>';
       return;
     }
   }
@@ -1066,7 +1066,7 @@ function renderTeamTable() {
     if (rows.length === 0) {
       document.getElementById('chart-wrap').style.display = 'none';
       document.getElementById('team-table-wrap').innerHTML =
-        '<p class="loading">No Olympic basketball appearances in the rating era.</p>';
+        '<p class="loading">No Olympic basketball appearances in the rating era</p>';
       return;
     }
   } else {
@@ -1228,7 +1228,7 @@ async function loadChampions() {
     renderLeagueHistory(historyTourny);
   } catch(e) {
     document.getElementById('history-table-wrap').innerHTML =
-      `<p class="error">Could not load tournaments.</p>`;
+      `<p class="error">Could not load tournaments</p>`;
   }
 }
 
@@ -1237,7 +1237,7 @@ function renderLeagueHistory(league) {
   const entries = championsData[league] || [];
   if (!entries.length) {
     document.getElementById('history-table-wrap').innerHTML =
-      `<p class="loading">No data for this competition.</p>`;
+      `<p class="loading">No data for this competition</p>`;
     return;
   }
 
@@ -1336,7 +1336,7 @@ async function loadGoat() {
     renderGoat();
   } catch(e) {
     document.getElementById('goat-table-wrap').innerHTML =
-      `<p class="error">Could not load GOAT table.</p>`;
+      `<p class="error">Could not load GOAT table</p>`;
   }
 }
 
