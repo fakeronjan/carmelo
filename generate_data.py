@@ -373,6 +373,29 @@ for tour in MEDAL_TOURNAMENTS:
 final_dates = set(tournament_final_date.values())
 df["is_end_of_season"] = df["date"].apply(lambda d: 1 if d in final_dates else 0)
 
+# A tournament's OFFICIAL label year (e.g. "Tokyo 2020", from curated_podiums.csv
+# / all_games.csv) can differ from the calendar year its ratings are actually
+# bucketed under in seasons_index.json / seasons/*.json - the 2020 Olympics
+# were played in summer 2021. champions.json / goat_teams.json season fields
+# feed the frontend's season deep-link, so they must point at a season that
+# actually has a seasons/{season}.json file, not the tournament's label year.
+# Resolve the TRUE display season from the edition's final date's own season
+# bucket in df (confirmed via all_games.csv cross-check: this is the only
+# medal tournament with a label/calendar-year mismatch as of 2026-08).
+_final_date_season = (
+    df.dropna(subset=["season"]).drop_duplicates("date")
+      .assign(_date_str=lambda x: x["date"].astype(str))
+      .set_index("_date_str")["season"].astype(int).to_dict()
+)
+
+
+def display_season(tour, year):
+    fdate = tournament_final_date.get((tour, year))
+    if fdate is not None and str(fdate) in _final_date_season:
+        return _final_date_season[str(fdate)]
+    return year
+
+
 # date -> (label, prestige) for season-file snapshot labels.
 date_label_map = {}
 for (tour, year), fdate in tournament_final_date.items():
@@ -576,7 +599,7 @@ for i, (_, r) in enumerate(goat_df.iterrows()):
         "team":                nm,
         "flag":                flag(r["code"]),
         "confederation":       clean(r["confederation"]),
-        "season":              int(r["year"]),
+        "season":              display_season(r.get("tournament", ""), int(r["year"])),
         "rating":              round3(r["rating"]),
         "tournament_finishes": finishes_for(r["code"], r["year"]),
         "continental_winner":  1 if (r["code"], int(r["year"])) in continental_winners else 0,
@@ -844,7 +867,7 @@ for tour in MEDAL_TOURNAMENTS:
             return block
 
         entries_oldest_first.append({
-            "season":     year,
+            "season":     display_season(tour, year),
             "host_flags": "",  # host data not modeled for CARMELO; UI hides empty
             "champion":   team_block(gold,   "title_count",     champ_counts),
             "runner_up":  team_block(silver, "runner_up_count", ru_counts),
