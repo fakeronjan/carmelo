@@ -396,6 +396,39 @@ def display_season(tour, year):
     return year
 
 
+# Calendar-year-keyed view of tournament_final_date, for cross-referencing
+# against df's own (calendar-year) season bucketing below - team_year_anchor
+# and _oly_team_games both need to look up a tournament's final date starting
+# from a CALENDAR year (matching df["season"]), not the tournament's raw label
+# year, or a label/calendar mismatch (Tokyo 2020 -> played 2021) makes the
+# lookup silently miss.
+tournament_final_date_by_season = {
+    (tour, display_season(tour, year)): fdate
+    for (tour, year), fdate in tournament_final_date.items()
+}
+
+# country_year_finishes / continental_winners (built above, keyed by each
+# tournament's raw LABEL year from edition_results) are looked up per-team
+# below using df's calendar-year season - rebuild both keyed by calendar
+# year so a label/calendar mismatch (Tokyo 2020 -> played 2021) doesn't
+# silently drop a country's honor badges / continental-winner flag for that
+# edition.
+country_year_finishes = {}
+for (tour, season), res in edition_results.items():
+    cal_season = display_season(tour, season)
+    for finish, code in res.items():
+        if not code:
+            continue
+        country_year_finishes.setdefault((code, cal_season), []).append(
+            {"tournament": TOURNAMENT_ABBREV.get(tour, tour), "finish": finish})
+for key in country_year_finishes:
+    country_year_finishes[key].sort(key=lambda x: x["finish"])
+
+continental_winners = set()
+for (tour, season), res in edition_results.items():
+    if tour in CONTINENTAL_TOURNAMENTS and res.get(1):
+        continental_winners.add((res[1], display_season(tour, season)))
+
 # date -> (label, prestige) for season-file snapshot labels.
 date_label_map = {}
 for (tour, year), fdate in tournament_final_date.items():
@@ -405,11 +438,13 @@ for (tour, year), fdate in tournament_final_date.items():
         date_label_map[ds] = (lbl, prestige)
 
 # ── Per-(code, year) team participation in each tournament (year anchors) ────
+# Keyed by CALENDAR year (via display_season) so this lines up with df's own
+# season bucketing in team_year_anchor below - see tournament_final_date_by_season.
 team_year_tournaments = {}  # (code, year) -> set(tournaments)
 for tour in MEDAL_TOURNAMENTS:
     tg = games[games["tournament"] == tour]
     for _, g in tg.iterrows():
-        yr = int(g["season"])
+        yr = display_season(tour, int(g["season"]))
         for code in (g["team_a"], g["team_b"]):
             team_year_tournaments.setdefault((code, yr), set()).add(tour)
 
@@ -428,16 +463,16 @@ for (code, year_f), last_game in team_year_last_game.items():
     played = team_year_tournaments.get((code, year), set())
     chosen = None
     # 1. Olympics (the global pinnacle for basketball)
-    if "Olympics" in played and ("Olympics", year) in tournament_final_date:
-        chosen = (tournament_final_date[("Olympics", year)], "End of Olympic basketball")
+    if "Olympics" in played and ("Olympics", year) in tournament_final_date_by_season:
+        chosen = (tournament_final_date_by_season[("Olympics", year)], "End of Olympic basketball")
     # 2. FIBA World Cup
-    if chosen is None and "FIBA World Cup" in played and ("FIBA World Cup", year) in tournament_final_date:
-        chosen = (tournament_final_date[("FIBA World Cup", year)], "End of FIBA World Cup")
+    if chosen is None and "FIBA World Cup" in played and ("FIBA World Cup", year) in tournament_final_date_by_season:
+        chosen = (tournament_final_date_by_season[("FIBA World Cup", year)], "End of FIBA World Cup")
     # 3. Confederation championship
     if chosen is None:
         confed_t = CONFED_CHAMPIONSHIP.get(team_confed.get(code))
-        if confed_t and confed_t in played and (confed_t, year) in tournament_final_date:
-            chosen = (tournament_final_date[(confed_t, year)], f"End of {confed_t}")
+        if confed_t and confed_t in played and (confed_t, year) in tournament_final_date_by_season:
+            chosen = (tournament_final_date_by_season[(confed_t, year)], f"End of {confed_t}")
     # 4. Fallback: last game-day of the year
     if chosen is None:
         chosen = (last_game, "End of year" if year < _CURRENT_YEAR else "Current")
@@ -594,15 +629,16 @@ else:
 goat_data = []
 for i, (_, r) in enumerate(goat_df.iterrows()):
     nm = name_for(r["code"])
+    cal_season = display_season(r.get("tournament", ""), int(r["year"]))
     entry = {
         "rank":                i + 1,
         "team":                nm,
         "flag":                flag(r["code"]),
         "confederation":       clean(r["confederation"]),
-        "season":              display_season(r.get("tournament", ""), int(r["year"])),
+        "season":              cal_season,
         "rating":              round3(r["rating"]),
-        "tournament_finishes": finishes_for(r["code"], r["year"]),
-        "continental_winner":  1 if (r["code"], int(r["year"])) in continental_winners else 0,
+        "tournament_finishes": finishes_for(r["code"], cal_season),
+        "continental_winner":  1 if (r["code"], cal_season) in continental_winners else 0,
     }
     fdate = tournament_final_date.get((r.get("tournament", ""), int(r["year"])))
     era = display_name_at(r["code"], fdate) if fdate else None
@@ -661,7 +697,9 @@ _oly_team_games = {}
 for _, _g in games[games["tournament"] == "Olympics"].iterrows():
     if pd.isna(_g["date"]) or pd.isna(_g["score_a"]) or pd.isna(_g["score_b"]):
         continue
-    _yr = int(_g["season"])
+    # Calendar year (via display_season), not the raw label year, so this
+    # lines up with oly_record()'s caller below (df's own season bucketing).
+    _yr = display_season("Olympics", int(_g["season"]))
     _sa, _sb = int(_g["score_a"]), int(_g["score_b"])
     _neu = bool(_g.get("neutral"))
     _oly_team_games.setdefault((_g["team_a"], _yr), []).append(
