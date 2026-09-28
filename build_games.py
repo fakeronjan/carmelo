@@ -178,6 +178,26 @@ def union_with_existing(fresh_df, path="all_games.csv"):
     return combined
 
 
+# Finished events are frozen: their games come from all_games.csv and are not
+# re-scraped, so a later Wikipedia edit or page-layout change can't rewrite
+# history. An event counts as finished once its season year has passed and
+# its last stored game is 60+ days old (World Cup qualifier cycles carry
+# the World Cup year, so they stay live until it). Pass --refresh-history to
+# re-scrape everything.
+FREEZE_AFTER_DAYS = 60
+
+
+def frozen_events(path="all_games.csv"):
+    """{(tournament, season)} pairs that are finished and already stored."""
+    if "--refresh-history" in sys.argv or not os.path.exists(path):
+        return set()
+    d = pd.read_csv(path, usecols=["date", "tournament", "season"])
+    last = pd.to_datetime(d["date"]).groupby([d["tournament"], d["season"].astype(str)]).max()
+    today = pd.Timestamp.today().normalize()
+    return {k for k, v in last.items()
+            if int(k[1]) < today.year and (today - v).days > FREEZE_AFTER_DAYS}
+
+
 MANUAL_GAMES_CSV = "manual_games.csv"
 
 
@@ -202,7 +222,12 @@ def manual_games_frame():
 
 def build(events, out_path="all_games.csv"):
     frames = []
+    frozen = frozen_events(out_path)
+    if frozen:
+        print(f"{len(frozen)} finished events frozen (stored games kept, not re-scraped)")
     for title, family, season in events:
+        if (family, str(season)) in frozen:
+            continue
         neutral = NEUTRAL[family]
         follow_q = (family == "WC Qualifiers")
         print(f"\n>>> {title}  [{family}, {season}, neutral={neutral}]")
