@@ -142,7 +142,7 @@ CODE_TO_ISO2 = {
     "PAN": "PA", "CUB": "CU", "ECU": "EC", "PER": "PE", "PAR": "PY",
     "BOL": "BO", "BAH": "BS", "ISV": "VI", "CRC": "CR", "JAM": "JM",
     "NCA": "NI", "HON": "HN", "GUA": "GT", "ESA": "SV", "SLV": "SV",
-    "TTO": "TT", "HAI": "HT", "ARU": "AW", "GUY": "GY",
+    "TTO": "TT", "HAI": "HT", "ARU": "AW", "GUY": "GY", "BAR": "BB",
     "AUS": "AU", "NZL": "NZ", "CHN": "CN", "PHI": "PH", "JPN": "JP",
     "KOR": "KR", "PRK": "KP", "IRI": "IR", "IRN": "IR", "JOR": "JO",
     "LBN": "LB", "SYR": "SY", "QAT": "QA", "KSA": "SA", "UAE": "AE",

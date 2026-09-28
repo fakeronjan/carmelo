@@ -128,6 +128,10 @@ AFROBASKET_MODERN = [
 # World Cup qualifiers (home-and-away, non-neutral). 2023 + 2019 cycles, four
 # FIBA zones each. These are the only non-neutral events.
 WC_QUALIFIERS = [
+    ("2027 FIBA Basketball World Cup qualification (Africa)",   "WC Qualifiers", "2027"),
+    ("2027 FIBA Basketball World Cup qualification (Americas)", "WC Qualifiers", "2027"),
+    ("2027 FIBA Basketball World Cup qualification (Asia)",     "WC Qualifiers", "2027"),
+    ("2027 FIBA Basketball World Cup qualification (Europe)",   "WC Qualifiers", "2027"),
     ("2023 FIBA Basketball World Cup qualification (Africa)",   "WC Qualifiers", "2023"),
     ("2023 FIBA Basketball World Cup qualification (Americas)", "WC Qualifiers", "2023"),
     ("2023 FIBA Basketball World Cup qualification (Asia)",     "WC Qualifiers", "2023"),

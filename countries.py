@@ -35,7 +35,7 @@ CODE_TO_NAME = {
     "BOL": "Bolivia", "BAH": "Bahamas", "ISV": "U.S. Virgin Islands",
     "CRC": "Costa Rica", "JAM": "Jamaica", "NCA": "Nicaragua", "HON": "Honduras",
     "GUA": "Guatemala", "SLV": "El Salvador", "TTO": "Trinidad and Tobago",
-    "HAI": "Haiti", "ARU": "Aruba", "ISLV": "U.S. Virgin Islands",
+    "HAI": "Haiti", "ARU": "Aruba", "BAR": "Barbados", "ISLV": "U.S. Virgin Islands",
 
     # Asia + Oceania (FIBA Asia, includes Oceania since 2017)
     "AUS": "Australia", "NZL": "New Zealand", "CHN": "China", "PHI": "Philippines",
@@ -111,7 +111,7 @@ _EUROPE = ["ESP","SRB","FRA","GRE","LTU","SLO","GER","ITA","CRO","TUR","RUS","UR
     "KOS","MLT","MON","AND","SMR","GIB"]
 _AMERICAS = ["USA","ARG","BRA","CAN","PUR","MEX","VEN","DOM","URU","CHI","COL","PAN",
     "CUB","ECU","PER","PAR","BOL","BAH","ISV","CRC","JAM","NCA","HON","GUA","SLV",
-    "TTO","HAI","ARU"]
+    "TTO","HAI","ARU","BAR"]
 _ASIA = ["AUS","NZL","CHN","PHI","JPN","KOR","PRK","IRI","IRN","JOR","LBN","SYR",
     "QAT","KSA","UAE","IRQ","KAZ","IND","INA","TPE","THA","MAS","SIN","VIE","HKG",
     "KUW","BHR","PLE","UZB","MGL","SRI","BAN","PAK","GUM","FIJ"]
